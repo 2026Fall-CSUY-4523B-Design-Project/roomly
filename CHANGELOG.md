@@ -4,6 +4,9 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
+### Changed
+- Node 20 -> 24 (`frontend/.nvmrc`, `engines.node >=24`); CI actions bumped to their Node 24 majors (checkout v7, setup-node v7, pnpm/action-setup v6, setup-uv v10, ssh-agent v0.10).
+
 ### Added
 - Monorepo skeleton: `backend/` (fastapi-reborn app with `/health`, pytest), `frontend/` (Next.js 12 + React 17, `/api/*` rewritten to the backend), `db/` (migrations), `docs/`.
 - `packages/fastapi-reborn` as a git submodule pinned to v0.1.0; backend consumes it as an editable path dependency.

@@ -25,7 +25,7 @@ Clone with submodules: `git clone --recurse-submodules <repo>` (or `git submodul
     -- [python (v3.14.0)](https://www.python.org/downloads/release/python-3140/)
     -- [uv (v0.13.1)](https://github.com/astral-sh/uv)
 - [nextjs (v12.0.0)](https://github.com/vercel/next.js)
-    -- [node (v26.11.1)](https://nodejs.org/en/download)
+    -- [node (v24.x LTS)](https://nodejs.org/en/download)
 - [postgresql (v18.6)](https://www.postgresql.org/download/)
 - [sqlite (v3.54.0)](https://www.sqlite.org/download.html)
 
