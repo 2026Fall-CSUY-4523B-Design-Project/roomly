@@ -1,12 +1,11 @@
-"""Roomly API entrypoint. Run: uv run python -m roomly.main"""
+"""Roomly API entrypoint. Run: script/backend.sh [dev|prod]"""
 
 import logging
 import os
 
 from fastapi_reborn import FastAPI
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-log = logging.getLogger("roomly")
+from roomly.config import Settings
 
 app = FastAPI(title="Roomly API", version="0.1.0")
 
@@ -16,8 +15,12 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+def main() -> None:
+    settings = Settings.from_env(os.environ)
+    logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.getLogger("roomly").info("starting env=%s on %s:%s", settings.env, settings.host, settings.port)
+    app.run(host=settings.host, port=settings.port)
+
+
 if __name__ == "__main__":
-    host = os.environ.get("ROOMLY_HOST", "127.0.0.1")
-    port = int(os.environ.get("ROOMLY_PORT", "8000"))
-    log.info("starting on %s:%s", host, port)
-    app.run(host=host, port=port)
+    main()
