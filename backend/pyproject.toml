@@ -1,0 +1,19 @@
+[project]
+name = "roomly"
+version = "0.1.0"
+description = "Roomly backend API built on fastapi-reborn"
+requires-python = ">=3.14"
+dependencies = ["fastapi-reborn"]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff"]
+
+[tool.uv.sources]
+fastapi-reborn = { path = "../packages/fastapi-reborn", editable = true }
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
