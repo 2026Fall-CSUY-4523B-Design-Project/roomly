@@ -13,7 +13,7 @@ backend/     Python API (src/roomly, tests/)
 frontend/    Next.js app (pages/)
 db/          migrations/ (local data in db/data, gitignored)
 packages/    git submodules (fastapi-reborn)
-script/      backend.sh · frontend.sh · database.sh · release.sh
+script/      all.sh · backend.sh · frontend.sh · database.sh · release.sh
 .github/     CI and release workflows
 docs/
 ```
