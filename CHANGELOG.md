@@ -12,4 +12,4 @@ All notable changes to this project are documented here, following [Keep a Chang
 - Root `.gitignore`.
 - dev/prod configuration: `roomly.config.Settings` driven by `ROOMLY_ENV` (prod binds 0.0.0.0, INFO logs, requires `DATABASE_URL`); `script/backend.sh prod`; `.env.example`.
 - `script/release.sh`: builds backend + fastapi-reborn wheels and a frontend tarball into `dist/`.
-- GitHub Actions: `ci.yml` (backend lint+test, frontend build) and `release.yml` (tag `v*` -> tests, release.sh, GitHub Release with artifacts). Private submodule checkout needs a `SUBMODULE_TOKEN` secret.
+- GitHub Actions: `ci.yml` (backend lint+test, frontend build) and `release.yml` (tag `v*` -> tests, release.sh, GitHub Release with artifacts). Private submodule is cloned over SSH with a read-only deploy key (`SUBMODULE_SSH_KEY` secret).

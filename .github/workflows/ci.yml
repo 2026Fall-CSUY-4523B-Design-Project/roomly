@@ -9,12 +9,14 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     steps:
-      # fastapi-reborn is a private repo: GITHUB_TOKEN cannot read it, so add a PAT
-      # (repo read access) as the SUBMODULE_TOKEN secret.
+      # fastapi-reborn is private: a read-only deploy key on that repo (private half in the
+      # SUBMODULE_SSH_KEY secret) lets the submodule checkout clone it over SSH.
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SUBMODULE_SSH_KEY }}
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.14"
