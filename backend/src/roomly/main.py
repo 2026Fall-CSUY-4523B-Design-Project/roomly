@@ -47,7 +47,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     )
     app.state.settings = settings
     app.state.database = database
-    app.state.services = Services.build(database, settings)
+    app.state.services = Services.build(database)
     install_error_handlers(app)
     for router in ROUTERS:
         app.include_router(router)

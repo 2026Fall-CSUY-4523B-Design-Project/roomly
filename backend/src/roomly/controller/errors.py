@@ -28,8 +28,15 @@ def _database_unavailable(request: Request, exc: Exception) -> Response:
     return JSONResponse({"detail": "the database is unavailable, try again shortly"}, status_code=503)
 
 
+def _not_implemented(request: Request, exc: Exception) -> Response:
+    """A service method that is still a stub."""
+    logger.info("not implemented: %s %s", request.method, request.path)
+    return JSONResponse({"detail": "not implemented yet"}, status_code=501)
+
+
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ServiceError, _service_error)
+    app.add_exception_handler(NotImplementedError, _not_implemented)
     for cls in IntegrityError:
         app.add_exception_handler(cls, _integrity_error)
     for cls in UnavailableError:

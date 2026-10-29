@@ -12,7 +12,7 @@ Roomly is a mono repo that contains multiple packages and applications related t
 backend/
   src/roomly/
     controller/   HTTP routers, one per SSDS use case (§8.1.2.1–8)
-    service/      use-case rules and transactions (SSDS control classes)
+    service/      SSDS control classes: method stubs (NotImplementedError -> HTTP 501)
     mapper/       hand-written SQL, one mapper per aggregate
     entity/       one dataclass per table
     dto/          request/response bodies with validation rules
@@ -47,7 +47,7 @@ script/run.sh                           # = script/run.sh --dev
 
 `script/run.sh --prod` builds and starts the backend and frontend against an external database; `DATABASE_URL` must be set.
 
-The backend applies pending migrations when it starts. Grant yourself the administrator role with `script/backend.sh admin you@example.com`; administrators cannot be group members.
+The backend applies pending migrations when it starts. All 56 endpoints are declared with their DTOs; the service methods behind them are stubs and answer 501 until implemented (see [docs/backend.md](docs/backend.md#to-do)).
 
 ## Database: PostgreSQL primary, SQLite fallback
 - At startup the backend connects to `DATABASE_URL` (PostgreSQL).
@@ -61,7 +61,7 @@ The backend applies pending migrations when it starts. Grant yourself the admini
 | Script | Usage |
 | --- | --- |
 | `script/run.sh` | `[--dev\|--prod]` whole stack, see above |
-| `script/backend.sh` | `[dev\|prod\|test\|lint\|migrate\|admin <email> [--revoke]]` API server, pytest, ruff, apply migrations, grant/revoke admin |
+| `script/backend.sh` | `[dev\|prod\|test\|lint\|migrate]` API server, pytest, ruff, apply migrations |
 | `script/frontend.sh` | `[dev\|build\|start]` Next.js via pnpm |
 | `script/database.sh` | `[start\|reset\|psql]` local Postgres in the foreground (`ROOMLY_DB_PORT` overrides 5433) |
 | `script/release.sh` | `[version]` builds wheels, the frontend tarball and the migrations tarball into `dist/` |
@@ -77,15 +77,12 @@ Copy [.env.example](.env.example) and export it, or set the variables in your de
 | `DATABASE_URL` | `postgresql://roomly@127.0.0.1:5433/postgres` in dev | required in prod; `sqlite:///path` = SQLite only |
 | `ROOMLY_SQLITE_FALLBACK` | `db/roomly.sqlite3` in dev, off in prod | SQLite file used when Postgres is unreachable at startup; `off` disables |
 | `ROOMLY_MIGRATIONS_DIR` | repo `db/migrations` | set it when running from installed wheels (the release ships `roomly-db-<v>.tar.gz`) |
-| `ROOMLY_SESSION_TTL_HOURS` | `336` (14 days) | sign-in session lifetime |
-| `ROOMLY_INVITATION_TTL_HOURS` | `168` (7 days) | group invitation lifetime |
-| `ROOMLY_PASSWORD_ITERATIONS` | `600000` | PBKDF2 iterations for new password hashes |
 | `ROOMLY_API_URL` | `http://127.0.0.1:8000` | frontend rewrite target, read by `next.config.js` at build/start |
 
 ## Testing
 ```sh
 script/database.sh start  # local Postgres for the Postgres half of the suite (another terminal)
-script/backend.sh test    # pytest: every database test runs on Postgres and on SQLite
+script/backend.sh test    # pytest: DTO validation, DDL invariants on Postgres and SQLite, DB fallback
 script/backend.sh lint    # ruff
 script/frontend.sh build  # frontend build check
 ```

@@ -1,9 +1,10 @@
-"""Services: the control classes of SSDS §9.1. Business rules and transactions live here."""
+"""Services: the control classes of SSDS §9.1. Business rules and transactions go here.
 
-import datetime as dt
+Every method is a stub that raises NotImplementedError, which the API answers with 501.
+"""
+
 from dataclasses import dataclass
 
-from roomly.config import Settings
 from roomly.db import Database
 from roomly.service.account_service import AccountService
 from roomly.service.admin_service import AdminService
@@ -27,11 +28,10 @@ class Services:
     notification: NotificationService
 
     @classmethod
-    def build(cls, db: Database, settings: Settings) -> Services:
+    def build(cls, db: Database) -> Services:
         return cls(
-            account=AccountService(db, session_ttl=dt.timedelta(hours=settings.session_ttl_hours),
-                                   password_iterations=settings.password_iterations),
-            group=GroupService(db, invitation_ttl=dt.timedelta(hours=settings.invitation_ttl_hours)),
+            account=AccountService(db),
+            group=GroupService(db),
             listing=ListingService(db),
             admin=AdminService(db),
             search=SearchService(db),

@@ -1,12 +1,13 @@
 # Backend
 
-The Roomly API: Python 3.14 on [fastapi-reborn](https://github.com/2026Fall-CSUY-4523B-Design-Project/fastapi-reborn) (stdlib only, no pydantic), with PostgreSQL as the primary database and SQLite as the fallback. It implements the eight use cases of SSDS-001 v2.0 §8.1.2 as 56 endpoints plus `/health`.
+The Roomly API: Python 3.14 on [fastapi-reborn](https://github.com/2026Fall-CSUY-4523B-Design-Project/fastapi-reborn) (stdlib only, no pydantic), with PostgreSQL as the primary database and SQLite as the fallback. It declares the API of the eight use cases of SSDS-001 v2.0 §8.1.2: 56 endpoints plus `/health`.
+
+What exists: the schema and migrations, the database layer (with the fallback), DTOs, controllers, SQL mappers and entities. The service methods behind the controllers are **stubs**: each one raises `NotImplementedError`, which the API answers with `501 {"detail": "not implemented yet"}`. DTO validation (422) and the bearer-token check (401) already run before a stub is reached.
 
 ```sh
 script/backend.sh dev       # serve on 127.0.0.1:8000, applying pending migrations first
-script/backend.sh test      # pytest: every database test runs on Postgres and on SQLite
+script/backend.sh test      # pytest: DTO validation and DDL invariants (on Postgres and on SQLite)
 script/backend.sh migrate   # apply migrations to the configured database (or its fallback)
-script/backend.sh admin you@example.com [--revoke]   # grant or revoke the administrator role
 ```
 
 `GET /openapi.json` (also served at `/docs`) returns the OpenAPI document, with request and response schemas generated from the DTOs.
@@ -22,7 +23,7 @@ HTTP ─▶ controller ─▶ service ─▶ mapper ─▶ Tx ─▶ PostgreSQL 
 | Package | Role | SSDS |
 | --- | --- | --- |
 | `roomly.controller` | One `APIRouter` per use case. Parses path, query and body into DTOs, resolves the bearer session, calls one service method, and returns a DTO. It holds no business rules. | boundary classes |
-| `roomly.service` | One class per use case. Each method opens a transaction, enforces the rules and access checks (`access.require_member` and similar), and raises `ServiceError` subclasses (`NotFound`, `Forbidden`, `Conflict`, ...). | control classes §9.1 |
+| `roomly.service` | One class per use case, with the method signatures the controllers call; docstrings note the SSDS rule where one applies. Every method is a stub (`raise NotImplementedError`). Implementations open a transaction (`self.db.transaction()`), use the mappers, and raise `ServiceError` subclasses (`NotFound`, `Forbidden`, `Conflict`, ...), which the controller layer maps to HTTP statuses. | control classes §9.1 |
 | `roomly.mapper` | Hand-written SQL, MyBatis style: one mapper per aggregate, and every statement visible in one place. Rows come back as entities. | — |
 | `roomly.entity` | One frozen dataclass per table; field names equal column names. | entity classes §9.1 |
 | `roomly.dto` | Frozen dataclasses for request and response bodies. Each field declares its constraints with `rule(...)` (length, range, pattern, unique items, lower-casing); `check()` holds cross-field rules. `parse()` returns FastAPI-style 422 errors. | — |
@@ -34,11 +35,12 @@ Controllers are async; `controller.base.run` moves each blocking service call on
 
 | Status | Body | When |
 | --- | --- | --- |
-| 401 | `{"detail": "..."}` plus `WWW-Authenticate: Bearer` | missing, expired or revoked session |
+| 401 | `{"detail": "..."}` plus `WWW-Authenticate: Bearer` | no bearer token (checked today); an expired or revoked session (once `AccountService.authenticate` is implemented) |
 | 403 | `{"detail": "..."}` | signed in, but not allowed (not a member, not the owner, not an administrator) |
 | 404 | `{"detail": "..."}` | not found; also an invitation addressed to someone else, so its existence is never confirmed |
 | 409 | `{"detail": "...", "constraint": "name"}` | a rule conflict from a service, or a database invariant that caught a race |
 | 422 | `{"detail": [{"loc": ["body", "email"], "msg": "...", "type": "...", "input": ...}]}` | DTO validation |
+| 501 | `{"detail": "not implemented yet"}` | the service method is still a stub |
 | 503 | `{"detail": "the database is unavailable, try again shortly"}` | the database dropped while serving |
 
 ## Database
@@ -65,7 +67,7 @@ Mappers write each statement once, in the SQL both engines share, with psycopg-s
 - registers `gen_random_uuid()`, `now()` and `regexp()` (with Postgres `~` semantics);
 - converts row values back to the entity's annotated types: UUID, datetime, date, Decimal, bool, list and dict.
 
-As a result, services see the same Python values from both engines. The two constructs that differ come from the transaction:
+As a result, mappers return the same Python values from both engines. The two constructs that differ come from the transaction:
 
 | Need | Call | PostgreSQL | SQLite |
 | --- | --- | --- | --- |
@@ -83,11 +85,10 @@ To add a migration, write **both** files with the same version number. `tests/te
 - **NULL means Unknown.** An Unknown value is never stored as 0 or as an empty string. DTOs carry an `unknown` list so a client can label the value "Unknown".
 - Money is stored as **integer cents** (`*_cents`). Enums are `text` columns with a `CHECK`. Timestamps are UTC (`timestamptz` in Postgres; fixed-width ISO text in SQLite, so text order is time order).
 - No PostGIS: `listing.latitude` and `longitude` are plain columns, and the map viewport filter is a bounds check. Routing for commute times (R-3.5) is not built yet.
-- Passwords are hashed with PBKDF2-SHA256 (600,000 iterations by default). Sessions are random bearer tokens, and only `sha256(token)` is stored, in `user_session`.
 
 ### Invariants the database enforces
 
-The services check these rules first. The database enforces them again, so a race or a forgotten check still cannot break them; a violation becomes a 409 that names the constraint.
+The database enforces these rules itself, so they hold whatever a service does or forgets; a violation becomes a 409 that names the constraint.
 
 | Rule | Constraint |
 | --- | --- |
@@ -106,7 +107,7 @@ The services check these rules first. The database enforces them again, so a rac
 
 ## Endpoints
 
-"Guest" means no token is needed. Every other route takes `Authorization: Bearer <token>` from sign-up or sign-in.
+The intended behavior of each endpoint, from the SSDS. Today every one of them answers 501 once its request has passed DTO validation and, where required, the bearer check. "Guest" means no token is needed; every other route takes `Authorization: Bearer <token>` from sign-up or sign-in.
 
 ### Login (§8.1.2.1)
 | | |
@@ -178,30 +179,21 @@ The services check these rules first. The database enforces them again, so a rac
 
 ## Traceability
 
-| Use case | Controller | Service | Mapper | Tests |
+| Use case | Controller | Service (stub) | Mapper | DTOs |
 | --- | --- | --- | --- | --- |
-| §8.1.2.1 Login | `account_controller` | `AccountService` | `account_mapper` | `test_account_api` |
-| §8.1.2.2 Group Management | `group_controller` | `GroupService` | `group_mapper` | `test_group_api` |
-| §8.1.2.3 Listing Submission | `listing_controller` | `ListingService` | `listing_mapper` | `test_listing_admin_api` |
-| §8.1.2.4 Listing Administration | `admin_controller` | `AdminService` | `listing_mapper` | `test_listing_admin_api`, `test_admin_cli` |
-| §8.1.2.5 Search and Ranking | `search_controller` | `SearchService` | `search_mapper`, `listing_mapper` | `test_search_api` |
-| §8.1.2.6 Comparison | `comparison_controller` | `ComparisonService` | `comparison_mapper` | `test_comparison_api` |
-| §8.1.2.7 Group Discussion | `room_controller` | `RoomService` | `room_mapper` | `test_room_api` |
-| §8.1.2.8 Notifications | `notification_controller` | `NotificationService` | `notification_mapper` | `test_notification_api` |
+| §8.1.2.1 Login | `account_controller` | `AccountService` | `account_mapper` | `dto/account` |
+| §8.1.2.2 Group Management | `group_controller` | `GroupService` | `group_mapper` | `dto/group` |
+| §8.1.2.3 Listing Submission | `listing_controller` | `ListingService` | `listing_mapper` | `dto/listing` |
+| §8.1.2.4 Listing Administration | `admin_controller` | `AdminService` | `listing_mapper` | `dto/admin` |
+| §8.1.2.5 Search and Ranking | `search_controller` | `SearchService` | `search_mapper`, `listing_mapper` | `dto/search` |
+| §8.1.2.6 Comparison | `comparison_controller` | `ComparisonService` | `comparison_mapper` | `dto/comparison` |
+| §8.1.2.7 Group Discussion | `room_controller` | `RoomService` | `room_mapper` | `dto/room` |
+| §8.1.2.8 Notifications | `notification_controller` | `NotificationService` | `notification_mapper` | `dto/notification` |
 
-Cross-cutting tests: `test_dto` (validation), `test_schema` (DDL invariants on both engines), `test_database` (fallback selection), `test_config`, `test_health`.
+Tests: `test_dto` (validation rules), `test_schema` (DDL invariants on both engines), `test_database` (primary/fallback selection), `test_config`, `test_health`.
 
-## Not built yet
+## To do
 
-These parts of the SSDS have a schema or an endpoint shape but no working implementation. Each is listed here so it is not mistaken for a finished feature.
-
-| Item | Use case | Sprint | State today |
-| --- | --- | --- | --- |
-| SampleFeed ingestion and normalization | §8.1.2.4 | 3 | tables (`listing_source`, `source_record`) and source admin exist; no collector job |
-| Ranking with explained scores | §8.1.2.5, R-3.3 | 4 | `/search` orders by the requested sort; results carry no score |
-| Commute times (routing) | §8.1.2.5, R-3.5 | 4 | destinations are stored; comparisons show commute as Unknown with a note |
-| Live room updates (push) | §8.1.2.7 | 5 | clients poll `GET /groups/{id}/messages` |
-| Email delivery, digest and quiet hours | §8.1.2.8 | 5 | notifications are stored with `email_status = 'pending'`; no worker sends them |
-| Import a listing from a URL | §8.1.2.3 | — | manual entry only |
-| Personal data export | §8.1.2.1 | — | deletion works; export does not |
-| Per-member group fit matrix | — | — | not started |
+- Every method in `roomly/service/` (all eight use cases), including sign-in itself: password hashing and bearer sessions (`AccountService.authenticate`), and access checks such as "members only" and "owner only".
+- Pieces the SSDS plans that have no stub yet: the SampleFeed collector job, ranking with explained scores (R-3.3), commute routing (R-3.5), live room push, the email/digest worker, importing a listing from a URL, personal data export, and the per-member group fit matrix.
+- A way to grant the administrator role (today: `UPDATE app_user SET role = 'admin'`).

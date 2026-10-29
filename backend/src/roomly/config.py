@@ -19,9 +19,6 @@ class Settings:
     log_level: str
     database_url: str
     migrations_dir: Path = _REPO_MIGRATIONS
-    session_ttl_hours: int = 24 * 14
-    invitation_ttl_hours: int = 24 * 7
-    password_iterations: int = 600_000   # PBKDF2-SHA256 (OWASP); tests lower it for speed
     sqlite_fallback: Path | None = None  # used when Postgres is unreachable at startup
 
     @classmethod
@@ -38,9 +35,6 @@ class Settings:
             # prod must set DATABASE_URL explicitly (KeyError = fail loudly)
             database_url=environ["DATABASE_URL"] if prod else environ.get("DATABASE_URL", _DEV_DATABASE_URL),
             migrations_dir=Path(environ.get("ROOMLY_MIGRATIONS_DIR", _REPO_MIGRATIONS)),
-            session_ttl_hours=int(environ.get("ROOMLY_SESSION_TTL_HOURS", 24 * 14)),
-            invitation_ttl_hours=int(environ.get("ROOMLY_INVITATION_TTL_HOURS", 24 * 7)),
-            password_iterations=int(environ.get("ROOMLY_PASSWORD_ITERATIONS", 600_000)),
             sqlite_fallback=_fallback(environ.get("ROOMLY_SQLITE_FALLBACK"), prod),
         )
 
