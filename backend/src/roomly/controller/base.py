@@ -13,6 +13,7 @@ from fastapi_reborn import Request
 from fastapi_reborn.params import RequestValidationError
 from fastapi_reborn.security import HTTPBearer
 
+from roomly import fixtures
 from roomly.dto.base import parse
 from roomly.entity import User
 from roomly.service import Services
@@ -42,8 +43,15 @@ def bearer_token(request: Request) -> str:
 
 
 async def current_user(request: Request) -> User:
-    """The signed-in user, or 401."""
-    return await run(services(request).account.authenticate, bearer_token(request))
+    """The signed-in user, or 401. While ``authenticate`` is a stub and fixtures are on, any
+    bearer token is the sample user, so the route still validates its request."""
+    token = bearer_token(request)
+    try:
+        return await run(services(request).account.authenticate, token)
+    except NotImplementedError:
+        if not request.app.state.settings.fixtures:
+            raise
+        return fixtures.USER
 
 
 def _invalid(where: str, name: str, kind: str, msg: str, value: Any) -> RequestValidationError:

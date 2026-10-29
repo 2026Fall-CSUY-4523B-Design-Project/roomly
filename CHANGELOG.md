@@ -14,8 +14,9 @@ All notable changes to this project are documented here, following [Keep a Chang
   - hand-written SQL mappers and one entity per table;
   - service classes as stubs: every method raises `NotImplementedError`, answered with HTTP 501.
   See `docs/backend.md` for the endpoint map, traceability and the to-do list.
+- Fixture mode (`ROOMLY_FIXTURES`, on in dev): stub endpoints answer with consistent sample responses from `roomly/fixtures.py` (real status codes, `X-Roomly-Fixture: 1`, validation and the bearer check still applied) so the frontend can be built before the logic exists.
 - Frontend directory skeleton: `components/`, `lib/`, `styles/`, `public/` next to `pages/`.
-- Backend tests for DTO validation, DDL invariants (on both Postgres and SQLite) and fallback selection.
+- Backend tests for DTO validation, DDL invariants (on both Postgres and SQLite), fallback selection and fixture coverage.
 - `docs/backend.md`.
 - Monorepo skeleton: `backend/` (fastapi-reborn app with `/health`, pytest), `frontend/` (Next.js 12 + React 17, `/api/*` rewritten to the backend), `db/` (migrations), `docs/`.
 - `packages/fastapi-reborn` as a git submodule pinned to v0.1.0; backend consumes it as an editable path dependency.

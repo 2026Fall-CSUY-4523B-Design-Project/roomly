@@ -20,6 +20,7 @@ class Settings:
     database_url: str
     migrations_dir: Path = _REPO_MIGRATIONS
     sqlite_fallback: Path | None = None  # used when Postgres is unreachable at startup
+    fixtures: bool = False  # stub service methods answer with roomly.fixtures samples instead of 501
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str]) -> Settings:
@@ -36,6 +37,7 @@ class Settings:
             database_url=environ["DATABASE_URL"] if prod else environ.get("DATABASE_URL", _DEV_DATABASE_URL),
             migrations_dir=Path(environ.get("ROOMLY_MIGRATIONS_DIR", _REPO_MIGRATIONS)),
             sqlite_fallback=_fallback(environ.get("ROOMLY_SQLITE_FALLBACK"), prod),
+            fixtures=_flag(environ.get("ROOMLY_FIXTURES"), default=not prod),
         )
 
 
@@ -44,3 +46,14 @@ def _fallback(value: str | None, prod: bool) -> Path | None:
     if value is None:
         return None if prod else _DEV_SQLITE_FALLBACK
     return None if value.strip().lower() in ("", "off", "none", "false") else Path(value)
+
+
+def _flag(value: str | None, *, default: bool) -> bool:
+    if value is None:
+        return default
+    v = value.strip().lower()
+    if v in ("1", "on", "true", "yes"):
+        return True
+    if v in ("", "0", "off", "false", "no"):
+        return False
+    raise ValueError(f"expected on/off, got {value!r}")

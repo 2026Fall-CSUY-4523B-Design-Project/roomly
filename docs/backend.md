@@ -2,7 +2,7 @@
 
 The Roomly API: Python 3.14 on [fastapi-reborn](https://github.com/2026Fall-CSUY-4523B-Design-Project/fastapi-reborn) (stdlib only, no pydantic), with PostgreSQL as the primary database and SQLite as the fallback. It declares the API of the eight use cases of SSDS-001 v2.0 §8.1.2: 56 endpoints plus `/health`.
 
-What exists: the schema and migrations, the database layer (with the fallback), DTOs, controllers, SQL mappers and entities. The service methods behind the controllers are **stubs**: each one raises `NotImplementedError`, which the API answers with `501 {"detail": "not implemented yet"}`. DTO validation (422) and the bearer-token check (401) already run before a stub is reached.
+What exists: the schema and migrations, the database layer (with the fallback), DTOs, controllers, SQL mappers and entities. The service methods behind the controllers are **stubs**: each one raises `NotImplementedError`, which the API answers with `501 {"detail": "not implemented yet"}`. DTO validation (422) and the bearer-token check (401) already run before a stub is reached. In dev, stubs answer with sample data instead; see [Fixtures](#fixtures).
 
 ```sh
 script/backend.sh dev       # serve on 127.0.0.1:8000, applying pending migrations first
@@ -40,8 +40,26 @@ Controllers are async; `controller.base.run` moves each blocking service call on
 | 404 | `{"detail": "..."}` | not found; also an invitation addressed to someone else, so its existence is never confirmed |
 | 409 | `{"detail": "...", "constraint": "name"}` | a rule conflict from a service, or a database invariant that caught a race |
 | 422 | `{"detail": [{"loc": ["body", "email"], "msg": "...", "type": "...", "input": ...}]}` | DTO validation |
-| 501 | `{"detail": "not implemented yet"}` | the service method is still a stub |
+| 501 | `{"detail": "not implemented yet"}` | the service method is still a stub and fixtures are off |
 | 503 | `{"detail": "the database is unavailable, try again shortly"}` | the database dropped while serving |
+
+## Fixtures
+
+`backend/src/roomly/fixtures.py` holds one sample response per route, keyed by `"METHOD /route/template"`. When a service stub raises `NotImplementedError` and `ROOMLY_FIXTURES` is on (the default in dev; off in prod), the error handler answers with that route's sample:
+
+- the response uses the route's normal status code (201 for creates, 204 with no body for deletes) and carries `X-Roomly-Fixture: 1`;
+- while `AccountService.authenticate` is a stub, any bearer token resolves to the sample user (Maya), so a route still validates its path, query and body first (422) and still rejects a missing token (401);
+- path ids and request bodies do not change the sample: every call to a route returns the same data;
+- once a service method is implemented it returns real data, while the routes still on stubs keep returning samples.
+
+The samples form one consistent world, so ids line up across endpoints:
+
+- Maya owns the group "Bushwick crew" with Alex and Sam;
+- three listings: Brooklyn (sources disagree on the bathrooms), Queens (with Unknown values) and Manhattan;
+- a shared comparison with one changed value;
+- messages (one from a deleted user), an open poll, notifications, and admin sources, a duplicate pair and a report.
+
+The samples are built from the response DTOs, so a missing or renamed field fails at import. `tests/test_fixtures.py` checks that every route with a body has a sample of its declared return type.
 
 ## Database
 

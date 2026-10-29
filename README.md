@@ -47,7 +47,9 @@ script/run.sh                           # = script/run.sh --dev
 
 `script/run.sh --prod` builds and starts the backend and frontend against an external database; `DATABASE_URL` must be set.
 
-The backend applies pending migrations when it starts. All 56 endpoints are declared with their DTOs; the service methods behind them are stubs and answer 501 until implemented (see [docs/backend.md](docs/backend.md#to-do)).
+The backend applies pending migrations when it starts. All 56 endpoints are declared with their DTOs; the service methods behind them are stubs (see [docs/backend.md](docs/backend.md#to-do)).
+
+**Fixtures for frontend work.** In dev, a stub answers with a sample response from `backend/src/roomly/fixtures.py` instead of 501. The response has the route's real status code and an `X-Roomly-Fixture: 1` header. Request validation (422) and the bearer check (401: send any token) still apply, so the frontend can be built against the real API shape before the logic exists. Methods that get implemented return real data automatically. `ROOMLY_FIXTURES=off` turns this off; it is off by default in prod.
 
 ## Database: PostgreSQL primary, SQLite fallback
 - At startup the backend connects to `DATABASE_URL` (PostgreSQL).
@@ -76,6 +78,7 @@ Copy [.env.example](.env.example) and export it, or set the variables in your de
 | `ROOMLY_LOG_LEVEL` | `DEBUG` (`INFO` in prod) | |
 | `DATABASE_URL` | `postgresql://roomly@127.0.0.1:5433/postgres` in dev | required in prod; `sqlite:///path` = SQLite only |
 | `ROOMLY_SQLITE_FALLBACK` | `db/roomly.sqlite3` in dev, off in prod | SQLite file used when Postgres is unreachable at startup; `off` disables |
+| `ROOMLY_FIXTURES` | `on` in dev, `off` in prod | stub endpoints answer with sample responses instead of 501 |
 | `ROOMLY_MIGRATIONS_DIR` | repo `db/migrations` | set it when running from installed wheels (the release ships `roomly-db-<v>.tar.gz`) |
 | `ROOMLY_API_URL` | `http://127.0.0.1:8000` | frontend rewrite target, read by `next.config.js` at build/start |
 
