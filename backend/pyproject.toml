@@ -21,6 +21,10 @@ build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "unit: no database needed",
+    "integration: runs against Postgres (ROOMLY_TEST_DATABASE_URL)",
+]
 
 [tool.ruff.lint.flake8-bugbear]
 # rule() returns a dataclasses.field() carrying validation metadata, like field() itself
