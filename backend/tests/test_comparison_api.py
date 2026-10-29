@@ -86,9 +86,9 @@ def test_saved_comparison_flags_changes_instead_of_replacing(api: Api) -> None:
     token, _ = api.user()
     a, b = api.listing(token), api.listing(token)
     saved = api.post("/comparisons", {"listing_ids": [a["id"], b["id"]]}, token).json
-    with api.db.transaction() as conn:
-        conn.execute("UPDATE listing SET advertised_rent_cents = 299000 WHERE id = %s", (a["id"],))
-        conn.execute("UPDATE listing SET status = 'removed' WHERE id = %s", (b["id"],))
+    with api.db.transaction() as tx:
+        tx.exec("UPDATE listing SET advertised_rent_cents = 299000 WHERE id = %(id)s", {"id": a["id"]})
+        tx.exec("UPDATE listing SET status = 'removed' WHERE id = %(id)s", {"id": b["id"]})
     got = api.get(f"/comparisons/{saved['id']}", token).json
     assert got["stale"] is True
     changes = {c["listing_id"]: c for c in got["changes"]}

@@ -27,7 +27,7 @@ class NotificationMapper(Mapper):
                                       delivered_at)
             VALUES (%(recipient_id)s, %(kind)s, %(event_id)s, %(group_id)s, %(listing_id)s, %(title)s, %(status)s,
                     %(email_status)s, CASE WHEN %(status)s = 'delivered' THEN now() END)
-            ON CONFLICT ON CONSTRAINT notification_once_key DO NOTHING
+            ON CONFLICT (recipient_id, kind, event_id) DO NOTHING   -- notification_once_key
             RETURNING {_NOTIFICATION}"""
         params = {"recipient_id": recipient_id, "kind": kind, "event_id": event_id, "group_id": group_id,
                   "listing_id": listing_id, "title": title, "status": status, "email_status": email_status}

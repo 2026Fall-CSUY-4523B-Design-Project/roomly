@@ -1,5 +1,7 @@
 """Notifications (§8.1.2.8, R-6) through the HTTP API and the notifier itself."""
 
+import uuid
+
 import pytest
 
 from roomly.entity import Group, Message
@@ -34,11 +36,11 @@ def test_retried_event_creates_no_second_alert(api: Api) -> None:
     member, _ = api.user()
     group_id = api.group(owner, member)
     posted = api.post(f"/groups/{group_id}/messages", {"body": "hello"}, owner).json
-    with api.db.transaction() as conn:
-        group = GroupMapper(conn).find(group_id)
-        message = MessageMapper(conn).find(posted["id"])
+    with api.db.transaction() as tx:
+        group = GroupMapper(tx).find(uuid.UUID(group_id))
+        message = MessageMapper(tx).find(uuid.UUID(posted["id"]))
         assert isinstance(group, Group) and isinstance(message, Message)
-        assert notify_group_message(conn, group, message) == 0
+        assert notify_group_message(tx, group, message) == 0
     assert api.get("/notifications", member).json["total"] == 1
 
 
@@ -70,7 +72,7 @@ def test_email_is_queued_only_for_users_who_want_it(api: Api) -> None:
     group = api.group(owner, wants, declines)
     api.put("/me/notification-settings", {"email": False}, declines)
     api.post(f"/groups/{group}/messages", {"body": "hi"}, owner)
-    with api.db.transaction() as conn:
-        rows = conn.execute("SELECT u.notify_email, n.email_status FROM notification n "
-                            "JOIN app_user u ON u.id = n.recipient_id ORDER BY 1").fetchall()
+    with api.db.transaction() as tx:
+        rows = tx.rows("SELECT u.notify_email, n.email_status FROM notification n "
+                       "JOIN app_user u ON u.id = n.recipient_id ORDER BY 1")
     assert rows == [(False, "none"), (True, "pending")]

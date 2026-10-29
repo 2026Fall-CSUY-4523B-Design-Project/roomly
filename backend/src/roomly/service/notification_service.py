@@ -9,9 +9,7 @@ hours act on ``email_status = 'pending'`` rows and land with EmailClient in Spri
 import logging
 from uuid import UUID
 
-import psycopg
-
-from roomly.db import Database
+from roomly.db import Database, Tx
 from roomly.dto.notification import (
     NotificationDTO,
     NotificationListDTO,
@@ -24,10 +22,10 @@ from roomly.service.errors import NotFound
 logger = logging.getLogger(__name__)
 
 
-def notify_group_message(conn: psycopg.Connection, group: Group, message: Message) -> int:
+def notify_group_message(tx: Tx, group: Group, message: Message) -> int:
     """§8.1.2.7 extension point: alert every current member except the sender. Returns alerts created."""
     assert message.author_id is not None
-    notifications = NotificationMapper(conn)
+    notifications = NotificationMapper(tx)
     created = 0
     for recipient in notifications.group_recipients(group.id, exclude_user_id=message.author_id):
         if "message" not in recipient.notify_kinds:
@@ -47,23 +45,23 @@ class NotificationService:
         self.db = db
 
     def inbox(self, user: User, *, unread_only: bool, limit: int, offset: int) -> NotificationListDTO:
-        with self.db.transaction() as conn:
-            notifications = NotificationMapper(conn)
+        with self.db.transaction() as tx:
+            notifications = NotificationMapper(tx)
             rows, total = notifications.inbox(user.id, unread_only=unread_only, limit=limit, offset=offset)
             unread = notifications.unread_count(user.id)
         return NotificationListDTO(items=[NotificationDTO.from_entity(n) for n in rows], total=total, unread=unread,
                                    limit=limit, offset=offset)
 
     def mark_read(self, user: User, notification_id: UUID) -> NotificationDTO:
-        with self.db.transaction() as conn:
-            n = NotificationMapper(conn).mark_read(notification_id, user.id)
+        with self.db.transaction() as tx:
+            n = NotificationMapper(tx).mark_read(notification_id, user.id)
         if n is None:
             raise NotFound("notification not found")
         return NotificationDTO.from_entity(n)
 
     def mark_all_read(self, user: User) -> int:
-        with self.db.transaction() as conn:
-            count = NotificationMapper(conn).mark_all_read(user.id)
+        with self.db.transaction() as tx:
+            count = NotificationMapper(tx).mark_all_read(user.id)
         logger.debug("marked read user=%s count=%d", user.id, count)
         return count
 
@@ -71,8 +69,8 @@ class NotificationService:
         return NotificationSettingsDTO.from_entity(user)
 
     def update_settings(self, user: User, req: NotificationSettingsDTO) -> NotificationSettingsDTO:
-        with self.db.transaction() as conn:
-            updated = UserMapper(conn).update_notification_settings(
+        with self.db.transaction() as tx:
+            updated = UserMapper(tx).update_notification_settings(
                 user.id, kinds=list(req.kinds), email=req.email, digest=req.digest,
                 quiet_start=req.quiet_start, quiet_end=req.quiet_end,
             )

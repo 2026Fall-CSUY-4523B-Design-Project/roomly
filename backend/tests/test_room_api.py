@@ -1,5 +1,7 @@
 """Group Discussion (§8.1.2.7, R-5) and the message alerts it triggers (R-6) through the HTTP API."""
 
+from urllib.parse import quote
+
 import pytest
 
 from conftest import Api
@@ -23,7 +25,7 @@ def test_messages_threads_and_alerts(api: Api) -> None:
     assert [m["body"] for m in room] == ["Love the light", "Saturday viewings?"]      # newest first
     thread = api.get(f"/groups/{group}/messages?listing_id={listing['id']}", owner).json
     assert [m["id"] for m in thread] == [on_listing.json["id"]]
-    older = api.get(f"/groups/{group}/messages?before={on_listing.json['sent_at']}", owner).json
+    older = api.get(f"/groups/{group}/messages?before={quote(on_listing.json['sent_at'])}", owner).json
     assert [m["id"] for m in older] == [general.json["id"]]
 
     owner_inbox = api.get("/notifications", owner).json

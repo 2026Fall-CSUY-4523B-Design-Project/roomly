@@ -62,7 +62,7 @@ class UserMapper(Mapper):
         return self._exec(
             """
             UPDATE app_user
-               SET email = NULL, password_hash = NULL, display_name = NULL, preferences = '{}'::jsonb,
+               SET email = NULL, password_hash = NULL, display_name = NULL, preferences = '{}',
                    quiet_start = NULL, quiet_end = NULL, notify_email = false, deleted_at = now()
              WHERE id = %(id)s AND deleted_at IS NULL""",
             {"id": user_id},

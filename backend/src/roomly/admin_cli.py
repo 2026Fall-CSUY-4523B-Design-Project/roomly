@@ -11,23 +11,22 @@ import logging
 import os
 import sys
 
-import psycopg
-
 from roomly.config import Settings
+from roomly.db import Database
 from roomly.mapper import MembershipMapper, UserMapper
 
 logger = logging.getLogger("roomly.admin")
 
 
-def set_admin(database_url: str, email: str, *, revoke: bool) -> str:
+def set_admin(db: Database, email: str, *, revoke: bool) -> str:
     email = email.strip().lower()
-    with psycopg.connect(database_url) as conn:
-        user = UserMapper(conn).find_by_email(email)
+    with db.transaction() as tx:
+        user = UserMapper(tx).find_by_email(email)
         if user is None:
             raise LookupError("no live account with that email")
-        if not revoke and MembershipMapper(conn).current_for_user(user.id):
+        if not revoke and MembershipMapper(tx).current_for_user(user.id):
             raise PermissionError("that account is in a group; administrators cannot be group members")
-        UserMapper(conn).set_role(email, "user" if revoke else "admin")
+        UserMapper(tx).set_role(email, "user" if revoke else "admin")
         return str(user.id)
 
 
@@ -38,11 +37,15 @@ def main() -> None:
     args = parser.parse_args()
     settings = Settings.from_env(os.environ)
     logging.basicConfig(level="INFO", format="%(levelname)s %(name)s: %(message)s")
+    db = Database(settings.database_url, fallback=settings.sqlite_fallback)
+    db.open()
     try:
-        user_id = set_admin(settings.database_url, args.email, revoke=args.revoke)
+        user_id = set_admin(db, args.email, revoke=args.revoke)
     except (LookupError, PermissionError) as exc:
         logger.error("%s", exc)
         sys.exit(1)
+    finally:
+        db.close()
     logger.info("user=%s is now %s", user_id, "a regular user" if args.revoke else "an administrator")
 
 

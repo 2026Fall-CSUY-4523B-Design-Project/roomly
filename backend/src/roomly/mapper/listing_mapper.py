@@ -57,13 +57,11 @@ class ListingFilter:
 _CLAUSES: list[tuple[str, str]] = [
     ("min_rent_cents", "advertised_rent_cents >= %(min_rent_cents)s"),
     ("max_rent_cents", "advertised_rent_cents <= %(max_rent_cents)s"),
-    ("boroughs", "borough = ANY(%(boroughs)s::text[])"),
     ("min_bedrooms", "bedrooms >= %(min_bedrooms)s"),
     ("max_bedrooms", "bedrooms <= %(max_bedrooms)s"),
     ("min_area_sqft", "area_sqft >= %(min_area_sqft)s"),
     ("move_in_from", "move_in_date >= %(move_in_from)s"),
     ("move_in_to", "move_in_date <= %(move_in_to)s"),
-    ("amenities", "amenities @> %(amenities)s::text[]"),
     ("south", "latitude >= %(south)s"),
     ("north", "latitude <= %(north)s"),
     ("west", "longitude >= %(west)s"),
@@ -107,7 +105,8 @@ class ListingMapper(Mapper):
         return self._one(Listing, f"SELECT {_LISTING} FROM listing WHERE id = %(id)s FOR UPDATE", {"id": listing_id})
 
     def find_many(self, listing_ids: list[UUID]) -> list[Listing]:
-        return self._all(Listing, f"SELECT {_LISTING} FROM listing WHERE id = ANY(%(ids)s)", {"ids": listing_ids})
+        where = self.tx.any_of("id", "ids", "uuid")
+        return self._all(Listing, f"SELECT {_LISTING} FROM listing WHERE {where}", {"ids": listing_ids})
 
     def set_status(self, listing_id: UUID, status: str, merged_into_id: UUID | None = None) -> int:
         return self._exec(
@@ -134,6 +133,12 @@ class ListingMapper(Mapper):
             if value is not None and value != []:
                 clauses.append(clause)
                 params[name] = value
+        if f.boroughs:
+            clauses.append(self.tx.any_of("borough", "boroughs", "text"))
+            params["boroughs"] = f.boroughs
+        if f.amenities:
+            clauses.append(self.tx.contains_all("amenities", "amenities"))
+            params["amenities"] = f.amenities
         if f.no_broker_fee:
             clauses.append("broker_fee_cents = 0")
         where = " AND ".join(clauses)
@@ -190,7 +195,7 @@ class SourceRecordMapper(Mapper):
         sql = f"""
             INSERT INTO source_record (source_id, listing_id, external_id, original_url, collected_at, raw_values, submitted_by)
             VALUES (%(source_id)s, %(listing_id)s, %(external_id)s, %(original_url)s, %(collected_at)s, %(raw_values)s, %(submitted_by)s)
-            ON CONFLICT ON CONSTRAINT source_record_fetch_key DO NOTHING
+            ON CONFLICT (source_id, external_id, collected_at) DO NOTHING   -- source_record_fetch_key
             RETURNING {_RECORD}"""
         params = {"source_id": source_id, "listing_id": listing_id, "external_id": external_id,
                   "original_url": original_url, "collected_at": collected_at, "raw_values": jsonb(raw_values),

@@ -1,5 +1,7 @@
 """Group Management use case (§8.1.2.2, R-1.2, R-1.3) through the HTTP API."""
 
+import datetime as dt
+
 import pytest
 
 from conftest import Api
@@ -45,9 +47,10 @@ def test_expired_invitation_is_rejected(api: Api) -> None:
     invitee, user = api.user()
     group = api.group(owner)
     inv = api.post(f"/groups/{group}/invitations", {"email": user["email"]}, owner).json
-    with api.db.transaction() as conn:
-        conn.execute("UPDATE group_invitation SET created_at = now() - interval '9 days', "
-                     "expires_at = now() - interval '1 day' WHERE id = %s", (inv["id"],))
+    now = dt.datetime.now(dt.UTC)
+    with api.db.transaction() as tx:
+        tx.exec("UPDATE group_invitation SET created_at = %(created)s, expires_at = %(expires)s WHERE id = %(id)s",
+                {"created": now - dt.timedelta(days=9), "expires": now - dt.timedelta(days=1), "id": inv["id"]})
     r = api.post(f"/invitations/{inv['id']}/accept", token=invitee)
     assert r.status == 409
     assert "expired" in r.json["detail"]

@@ -104,9 +104,9 @@ class ReactionMapper(Mapper):
                           {"m": message_id, "u": user_id})
 
     def counts(self, message_ids: list[UUID], viewer_id: UUID) -> list[ReactionCount]:
-        sql = """
-            SELECT message_id, emoji, count(*) AS count, bool_or(user_id = %(viewer)s) AS mine
-              FROM message_reaction WHERE message_id = ANY(%(ids)s)
+        sql = f"""
+            SELECT message_id, emoji, count(*) AS count, max(CASE WHEN user_id = %(viewer)s THEN 1 ELSE 0 END) = 1 AS mine
+              FROM message_reaction WHERE {self.tx.any_of("message_id", "ids", "uuid")}
              GROUP BY message_id, emoji ORDER BY message_id, count(*) DESC, emoji"""
         return self._all(ReactionCount, sql, {"ids": message_ids, "viewer": viewer_id})
 
@@ -169,4 +169,4 @@ class PollMapper(Mapper):
 
     def my_vote(self, poll_id: UUID, user_id: UUID) -> UUID | None:
         return self._scalar("SELECT option_id FROM poll_vote WHERE poll_id = %(p)s AND user_id = %(u)s",
-                            {"p": poll_id, "u": user_id})
+                            {"p": poll_id, "u": user_id}, as_type=UUID)

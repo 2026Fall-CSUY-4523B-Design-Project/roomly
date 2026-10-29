@@ -2,10 +2,9 @@
 
 import logging
 
-import psycopg
 from fastapi_reborn import FastAPI, JSONResponse, Request, Response
-from psycopg_pool import PoolTimeout
 
+from roomly.db import IntegrityError, UnavailableError, constraint_name, error_message
 from roomly.service.errors import ServiceError
 
 logger = logging.getLogger(__name__)
@@ -19,11 +18,9 @@ def _service_error(request: Request, exc: Exception) -> Response:
 
 def _integrity_error(request: Request, exc: Exception) -> Response:
     """A database invariant caught what the service did not (a race, or a missing check)."""
-    assert isinstance(exc, psycopg.errors.IntegrityError)
-    constraint = exc.diag.constraint_name
+    constraint = constraint_name(exc)
     logger.warning("integrity error on %s %s constraint=%s", request.method, request.path, constraint)
-    detail = exc.diag.message_primary or "the request conflicts with existing data"
-    return JSONResponse({"detail": detail, "constraint": constraint}, status_code=409)
+    return JSONResponse({"detail": error_message(exc), "constraint": constraint}, status_code=409)
 
 
 def _database_unavailable(request: Request, exc: Exception) -> Response:
@@ -33,6 +30,7 @@ def _database_unavailable(request: Request, exc: Exception) -> Response:
 
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ServiceError, _service_error)
-    app.add_exception_handler(psycopg.errors.IntegrityError, _integrity_error)
-    app.add_exception_handler(psycopg.OperationalError, _database_unavailable)
-    app.add_exception_handler(PoolTimeout, _database_unavailable)
+    for cls in IntegrityError:
+        app.add_exception_handler(cls, _integrity_error)
+    for cls in UnavailableError:
+        app.add_exception_handler(cls, _database_unavailable)

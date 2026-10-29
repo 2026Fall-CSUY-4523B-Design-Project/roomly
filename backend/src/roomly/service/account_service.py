@@ -48,34 +48,34 @@ class AccountService:
 
     def sign_up(self, req: SignUpRequest) -> SessionDTO:
         password_hash = hash_password(req.password, iterations=self.password_iterations)
-        with self.db.transaction() as conn:
-            users = UserMapper(conn)
+        with self.db.transaction() as tx:
+            users = UserMapper(tx)
             if users.find_by_email(req.email) is not None:
                 raise Conflict("an account with this email already exists")
             user = users.insert(req.email, password_hash, req.display_name)
-            session = self._open_session(SessionMapper(conn), user)
+            session = self._open_session(SessionMapper(tx), user)
         logger.info("account created user=%s", user.id)
         return session
 
     def sign_in(self, req: SignInRequest) -> SessionDTO:
-        with self.db.transaction() as conn:
-            user = UserMapper(conn).find_by_email(req.email)
+        with self.db.transaction() as tx:
+            user = UserMapper(tx).find_by_email(req.email)
             ok = verify_password(req.password, user.password_hash if user and user.password_hash else self._dummy_hash)
             if user is None or not ok:
                 logger.info("sign-in rejected")  # no email in logs
                 raise Unauthorized("invalid email or password")
-            session = self._open_session(SessionMapper(conn), user)
+            session = self._open_session(SessionMapper(tx), user)
         logger.info("signed in user=%s", user.id)
         return session
 
     def sign_out(self, token: str) -> None:
-        with self.db.transaction() as conn:
-            SessionMapper(conn).revoke(token_digest(token))
+        with self.db.transaction() as tx:
+            SessionMapper(tx).revoke(token_digest(token))
 
     def authenticate(self, token: str) -> User:
         """The live user behind a bearer token, or 401."""
-        with self.db.transaction() as conn:
-            user = SessionMapper(conn).find_user_by_token(token_digest(token))
+        with self.db.transaction() as tx:
+            user = SessionMapper(tx).find_user_by_token(token_digest(token))
         if user is None:
             raise Unauthorized("session expired or invalid")
         return user
@@ -85,12 +85,12 @@ class AccountService:
 
     def delete_account(self, user: User, req: DeleteAccountRequest) -> None:
         """R-1.4 / §8.1.2.1 alt. flows 2-3: blocked while the user owns a group with other members."""
-        with self.db.transaction() as conn:
-            fresh = UserMapper(conn).lock(user.id)
+        with self.db.transaction() as tx:
+            fresh = UserMapper(tx).lock(user.id)
             if fresh is None or fresh.password_hash is None or not verify_password(req.password, fresh.password_hash):
                 raise Forbidden("password confirmation failed")
-            memberships = MembershipMapper(conn)
-            groups = GroupMapper(conn)
+            memberships = MembershipMapper(tx)
+            groups = GroupMapper(tx)
             blocking = []
             for m in memberships.current_for_user(user.id):
                 if not m.is_owner:
@@ -102,15 +102,15 @@ class AccountService:
             if blocking:
                 raise Conflict("transfer ownership of your groups before deleting the account: " + ", ".join(blocking))
             memberships.end_all_for_user(user.id)
-            SessionMapper(conn).delete_all_for_user(user.id)
-            CommuteMapper(conn).delete_all_for_user(user.id)
-            SavedSearchMapper(conn).delete_all_for_user(user.id)
-            NotificationMapper(conn).delete_all_for_user(user.id)
-            ComparisonMapper(conn).delete_personal_for_user(user.id)
+            SessionMapper(tx).delete_all_for_user(user.id)
+            CommuteMapper(tx).delete_all_for_user(user.id)
+            SavedSearchMapper(tx).delete_all_for_user(user.id)
+            NotificationMapper(tx).delete_all_for_user(user.id)
+            ComparisonMapper(tx).delete_personal_for_user(user.id)
             assert fresh.email is not None
-            InvitationMapper(conn).delete_pending_for_email(fresh.email)
-            SourceRecordMapper(conn).clear_submitter(user.id)
-            UserMapper(conn).scrub(user.id)
+            InvitationMapper(tx).delete_pending_for_email(fresh.email)
+            SourceRecordMapper(tx).clear_submitter(user.id)
+            UserMapper(tx).scrub(user.id)
         logger.info("account deleted user=%s", user.id)
 
     def _open_session(self, sessions: SessionMapper, user: User) -> SessionDTO:

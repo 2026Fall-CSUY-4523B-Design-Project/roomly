@@ -14,7 +14,7 @@ from fastapi_reborn import FastAPI
 from roomly.config import Settings
 from roomly.controller import ROUTERS
 from roomly.controller.errors import install_error_handlers
-from roomly.db import Database, migrate
+from roomly.db import Database
 from roomly.service import Services
 
 logger = logging.getLogger("roomly")
@@ -23,13 +23,15 @@ VERSION = "0.2.0"
 
 
 def create_app(settings: Settings | None = None, database: Database | None = None) -> FastAPI:
-    """Build the app. The pool opens in the lifespan (when serving); tests open it themselves."""
+    """Build the app. The database opens (and migrates) in the lifespan when serving;
+    tests open it themselves."""
     settings = settings or Settings.from_env(os.environ)
-    database = database or Database(settings.database_url)
+    database = database or Database(settings.database_url, fallback=settings.sqlite_fallback)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        database.open()
+        database.open()   # Postgres, or the SQLite fallback if Postgres is unreachable
+        database.migrate(settings.migrations_dir)
         try:
             yield
         finally:
@@ -50,8 +52,9 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         app.include_router(router)
 
     @app.get("/health", tags=["ops"])
-    async def health() -> dict[str, str]:
-        return {"status": "ok"}
+    async def health() -> dict[str, str | None]:
+        """``database`` is "postgres", "sqlite" (fallback active) or null (not open)."""
+        return {"status": "ok", "database": database.dialect}
 
     return app
 
@@ -62,7 +65,6 @@ app = create_app()
 def main() -> None:
     settings = Settings.from_env(os.environ)
     logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    migrate(settings.database_url, settings.migrations_dir)
     logger.info("starting env=%s on %s:%s", settings.env, settings.host, settings.port)
     app.run(host=settings.host, port=settings.port, log_level=settings.log_level)
 

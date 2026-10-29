@@ -10,7 +10,7 @@ case "${1:-dev}" in
   prod) uv sync --quiet --frozen --no-dev && ROOMLY_ENV=prod exec uv run --frozen --no-dev python -m roomly.main ;;
   test) uv sync --quiet && exec uv run pytest -q ;;
   lint) uv sync --quiet && exec uv run ruff check src tests ;;
-  migrate) uv sync --quiet && exec uv run python -m roomly.db.migrate ;;
+  migrate) uv sync --quiet && exec uv run python -m roomly.db ;;
   admin) uv sync --quiet && exec uv run python -m roomly.admin_cli "${@:2}" ;;
   *)    echo "usage: $0 [dev|prod|test|lint|migrate|admin <email> [--revoke]]" >&2; exit 2 ;;
 esac

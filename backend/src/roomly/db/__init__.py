@@ -1,4 +1,11 @@
+from roomly.db.backend import (
+    IntegrityError,
+    Json,
+    Tx,
+    UnavailableError,
+    constraint_name,
+    error_message,
+)
 from roomly.db.database import Database
-from roomly.db.migrate import migrate
 
-__all__ = ["Database", "migrate"]
+__all__ = ["Database", "IntegrityError", "Json", "Tx", "UnavailableError", "constraint_name", "error_message"]

@@ -44,46 +44,46 @@ class SearchService:
         self.db = db
 
     def search(self, criteria: SearchCriteria, sort: SortOrder, limit: int, offset: int) -> Page[ListingSummaryDTO]:
-        with self.db.transaction() as conn:
-            rows, total = ListingMapper(conn).search(to_filter(criteria), sort, limit, offset)
+        with self.db.transaction() as tx:
+            rows, total = ListingMapper(tx).search(to_filter(criteria), sort, limit, offset)
         logger.debug("search total=%d returned=%d", total, len(rows))
         return Page(items=[ListingSummaryDTO.from_entity(r) for r in rows], total=total, limit=limit, offset=offset)
 
     # --- saved searches --------------------------------------------------------------
 
     def list_saved(self, user: User) -> list[SavedSearchDTO]:
-        with self.db.transaction() as conn:
-            return [SavedSearchDTO.from_entity(s) for s in SavedSearchMapper(conn).list_for_user(user.id)]
+        with self.db.transaction() as tx:
+            return [SavedSearchDTO.from_entity(s) for s in SavedSearchMapper(tx).list_for_user(user.id)]
 
     def save(self, user: User, req: SavedSearchRequest) -> SavedSearchDTO:
-        with self.db.transaction() as conn:
-            saved = SavedSearchMapper(conn).insert(user.id, req.name, json_safe(req.criteria), dict(req.weights),
+        with self.db.transaction() as tx:
+            saved = SavedSearchMapper(tx).insert(user.id, req.name, json_safe(req.criteria), dict(req.weights),
                                                    req.alerts_enabled)
         logger.info("saved search created search=%s user=%s", saved.id, user.id)
         return SavedSearchDTO.from_entity(saved)
 
     def run_saved(self, user: User, search_id: UUID, sort: SortOrder, limit: int, offset: int) -> Page[ListingSummaryDTO]:
-        with self.db.transaction() as conn:
-            saved = SavedSearchMapper(conn).find_for_user(search_id, user.id)
+        with self.db.transaction() as tx:
+            saved = SavedSearchMapper(tx).find_for_user(search_id, user.id)
         if saved is None:
             raise NotFound("saved search not found")
         # stored as JSON when it was saved (already validated); parse restores dates and lists
         return self.search(parse(SearchCriteria, saved.criteria), sort, limit, offset)
 
     def delete_saved(self, user: User, search_id: UUID) -> None:
-        with self.db.transaction() as conn:
-            if SavedSearchMapper(conn).delete(search_id, user.id) == 0:
+        with self.db.transaction() as tx:
+            if SavedSearchMapper(tx).delete(search_id, user.id) == 0:
                 raise NotFound("saved search not found")
 
     # --- commute destinations (User 1 -- 0..3 CommuteDestination) ---------------------
 
     def list_destinations(self, user: User) -> list[CommuteDestinationDTO]:
-        with self.db.transaction() as conn:
-            return [CommuteDestinationDTO.from_entity(d) for d in CommuteMapper(conn).list_for_user(user.id)]
+        with self.db.transaction() as tx:
+            return [CommuteDestinationDTO.from_entity(d) for d in CommuteMapper(tx).list_for_user(user.id)]
 
     def add_destination(self, user: User, req: CommuteDestinationRequest) -> CommuteDestinationDTO:
-        with self.db.transaction() as conn:
-            destinations = CommuteMapper(conn)
+        with self.db.transaction() as tx:
+            destinations = CommuteMapper(tx)
             if destinations.count_for_user(user.id) >= MAX_DESTINATIONS:
                 raise Conflict(f"you can save at most {MAX_DESTINATIONS} commute destinations")
             d = destinations.insert(user.id, req.label, req.address, req.latitude, req.longitude, req.mode)
@@ -91,6 +91,6 @@ class SearchService:
         return CommuteDestinationDTO.from_entity(d)
 
     def delete_destination(self, user: User, destination_id: UUID) -> None:
-        with self.db.transaction() as conn:
-            if CommuteMapper(conn).delete(destination_id, user.id) == 0:
+        with self.db.transaction() as tx:
+            if CommuteMapper(tx).delete(destination_id, user.id) == 0:
                 raise NotFound("commute destination not found")

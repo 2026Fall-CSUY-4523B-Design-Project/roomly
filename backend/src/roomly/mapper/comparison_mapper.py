@@ -12,11 +12,13 @@ _ITEM = columns(ComparisonListing)
 
 class ComparisonMapper(Mapper):
     def insert(self, saved_by: UUID, group_id: UUID | None, title: str | None) -> Comparison:
+        """Saved with a group = shared with it at once."""
         sql = f"""
             INSERT INTO comparison (saved_by, group_id, title, shared_at)
-            VALUES (%(saved_by)s, %(group_id)s, %(title)s, CASE WHEN %(group_id)s::uuid IS NULL THEN NULL ELSE now() END)
+            VALUES (%(saved_by)s, %(group_id)s, %(title)s, CASE WHEN %(shared)s THEN now() END)
             RETURNING {_COMPARISON}"""
-        comparison = self._one(Comparison, sql, {"saved_by": saved_by, "group_id": group_id, "title": title})
+        params = {"saved_by": saved_by, "group_id": group_id, "title": title, "shared": group_id is not None}
+        comparison = self._one(Comparison, sql, params)
         assert comparison is not None
         return comparison
 

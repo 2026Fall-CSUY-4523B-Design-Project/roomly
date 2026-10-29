@@ -1,7 +1,7 @@
 """Controller helpers: the HTTP boundary between fastapi-reborn and the services.
 
 Controllers stay thin: read and validate the request into a DTO, resolve the caller, call
-one service method in a worker thread (services use blocking psycopg), return its DTO.
+one service method in a worker thread (database drivers block), return its DTO.
 """
 
 import asyncio

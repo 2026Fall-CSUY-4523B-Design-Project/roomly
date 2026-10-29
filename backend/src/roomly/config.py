@@ -6,7 +6,9 @@ from pathlib import Path
 
 _DEV_DATABASE_URL = "postgresql://roomly@127.0.0.1:5433/postgres"
 # backend/src/roomly/config.py -> repo root. Installed wheels have no repo: set ROOMLY_MIGRATIONS_DIR.
-_REPO_MIGRATIONS = Path(__file__).resolve().parents[3] / "db" / "migrations"
+_REPO_DB = Path(__file__).resolve().parents[3] / "db"
+_REPO_MIGRATIONS = _REPO_DB / "migrations"
+_DEV_SQLITE_FALLBACK = _REPO_DB / "roomly.sqlite3"   # gitignored; outside db/data, which initdb owns
 
 
 @dataclass(frozen=True)
@@ -20,6 +22,7 @@ class Settings:
     session_ttl_hours: int = 24 * 14
     invitation_ttl_hours: int = 24 * 7
     password_iterations: int = 600_000   # PBKDF2-SHA256 (OWASP); tests lower it for speed
+    sqlite_fallback: Path | None = None  # used when Postgres is unreachable at startup
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str]) -> Settings:
@@ -38,4 +41,12 @@ class Settings:
             session_ttl_hours=int(environ.get("ROOMLY_SESSION_TTL_HOURS", 24 * 14)),
             invitation_ttl_hours=int(environ.get("ROOMLY_INVITATION_TTL_HOURS", 24 * 7)),
             password_iterations=int(environ.get("ROOMLY_PASSWORD_ITERATIONS", 600_000)),
+            sqlite_fallback=_fallback(environ.get("ROOMLY_SQLITE_FALLBACK"), prod),
         )
+
+
+def _fallback(value: str | None, prod: bool) -> Path | None:
+    """Default: on in dev (db/roomly.sqlite3), off in prod. "off" or "" disables it."""
+    if value is None:
+        return None if prod else _DEV_SQLITE_FALLBACK
+    return None if value.strip().lower() in ("", "off", "none", "false") else Path(value)
