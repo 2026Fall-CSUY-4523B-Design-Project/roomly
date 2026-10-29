@@ -9,6 +9,7 @@ import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 
 import uvicorn
 from fastapi import FastAPI
@@ -21,7 +22,7 @@ from roomly.service import Services
 
 logger = logging.getLogger("roomly")
 
-VERSION = "0.2.0"
+VERSION = version("roomly")   # backend/pyproject.toml, one number with the release tag
 
 
 def create_app(settings: Settings | None = None, database: Database | None = None) -> FastAPI:

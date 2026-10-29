@@ -4,6 +4,10 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-29
+
+First release, matching SSDS-001 v2.1.
+
 ### Added
 - Database schema, 21 tables, in two dialects: `db/migrations/postgres/0001_init.sql` and `db/migrations/sqlite/0001_init.sql`. Unknown values are NULL and money is integer cents. The database itself enforces the SSDS invariants: at most six members per group, administrators never members, one owner, at most three commute destinations, searchable listings in scope (R-2.1), closed polls reject votes, one reaction and one vote per member, one notification per event, and retried fetches not stored twice.
 - PostgreSQL as the primary database with a SQLite fallback. When `DATABASE_URL` is unreachable at startup, the backend logs a warning and runs on `ROOMLY_SQLITE_FALLBACK` (`db/roomly.sqlite3` in dev, off in prod). `DATABASE_URL=sqlite:///...` runs on SQLite only, and `/health` reports the engine in use.
