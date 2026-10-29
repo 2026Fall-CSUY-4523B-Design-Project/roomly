@@ -80,7 +80,7 @@ To add a migration, write **both** files with the same version number. `tests/te
 
 ### Schema conventions
 
-- **NULL means Unknown.** An Unknown value is never stored as 0 or as an empty string. DTOs carry an `unknown` list so the client can label the value, and the frontend shows "Unknown".
+- **NULL means Unknown.** An Unknown value is never stored as 0 or as an empty string. DTOs carry an `unknown` list so a client can label the value "Unknown".
 - Money is stored as **integer cents** (`*_cents`). Enums are `text` columns with a `CHECK`. Timestamps are UTC (`timestamptz` in Postgres; fixed-width ISO text in SQLite, so text order is time order).
 - No PostGIS: `listing.latitude` and `longitude` are plain columns, and the map viewport filter is a bounds check. Routing for commute times (R-3.5) is not built yet.
 - Passwords are hashed with PBKDF2-SHA256 (600,000 iterations by default). Sessions are random bearer tokens, and only `sha256(token)` is stored, in `user_session`.

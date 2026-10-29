@@ -17,16 +17,9 @@ All notable changes to this project are documented here, following [Keep a Chang
   See `docs/backend.md` for the endpoint map and traceability.
 - Accounts: bearer sessions (only the token's SHA-256 is stored) and PBKDF2 password hashes. Account deletion keeps "Deleted user" attribution (R-1.4).
 - `script/backend.sh admin <email> [--revoke]` grants or revokes the administrator role.
-- Frontend skeleton:
-  - `lib/api.js` (the `/api` client and `ApiError` with per-field 422 messages), `lib/auth.js` (the session, kept in memory when storage is blocked), `lib/format.js` (cents and Unknown labels);
-  - the layout and design tokens, with light and dark themes;
-  - working pages for search, the listing card, sign-up/sign-in and group management;
-  - shells for compare, notifications, the group room and admin, each naming the sprint that delivers it.
-- Tests:
-  - 143 backend tests; every database test runs on both Postgres and SQLite;
-  - 15 frontend `node:test` tests (`script/frontend.sh test`).
-- CI runs the frontend tests.
-- `docs/backend.md` and `docs/frontend.md`.
+- Frontend directory skeleton: `components/`, `lib/`, `styles/`, `public/` next to `pages/`.
+- 143 backend tests; every database test runs on both Postgres and SQLite.
+- `docs/backend.md`.
 
 ### Changed
 - CI and release start a `postgres:18` service for the backend tests; the release also ships `roomly-db-<v>.tar.gz` (the migrations).
