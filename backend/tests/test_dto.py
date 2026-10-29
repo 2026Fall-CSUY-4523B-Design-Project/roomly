@@ -2,6 +2,7 @@
 
 import datetime as dt
 import uuid
+from importlib.metadata import version
 from typing import Any
 
 import pytest
@@ -120,3 +121,4 @@ def test_openapi_documents_bodies_responses_and_bearer_auth() -> None:
     assert schema == {"$ref": "#/components/schemas/CreateGroupRequest"}
     assert "201" in create["responses"] and "422" in create["responses"]
     assert "security" not in doc["paths"]["/search"]["get"]
+    assert doc["info"]["version"] == version("roomly")   # the API reports the release version

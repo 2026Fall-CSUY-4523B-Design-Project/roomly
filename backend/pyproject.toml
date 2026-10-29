@@ -1,6 +1,6 @@
 [project]
 name = "roomly"
-version = "0.1.0"
+version = "2.1.0"
 description = "Roomly backend API built on FastAPI"
 requires-python = ">=3.14"
 dependencies = [

@@ -1,6 +1,6 @@
 # Backend
 
-The Roomly API: Python 3.14 on [FastAPI](https://fastapi.tiangolo.com/) (pydantic DTOs, served by uvicorn), with PostgreSQL as the primary database and SQLite as the fallback. It declares the API of the eight use cases of SSDS-001 v2.0 §8.1.2: 56 endpoints plus `/health`.
+The Roomly API: Python 3.14 on [FastAPI](https://fastapi.tiangolo.com/) (pydantic DTOs, served by uvicorn), with PostgreSQL as the primary database and SQLite as the fallback. It declares the API of the eight use cases of SSDS-001 v2.1 §8.1.2: 56 endpoints plus `/health`.
 
 What exists: the schema and migrations, the database layer (with the fallback), DTOs, controllers, SQL mappers and entities. The service methods behind the controllers are **stubs**: each one raises `NotImplementedError`, which the API answers with `501 {"detail": "not implemented yet"}`. DTO validation (422) and the bearer-token check (401) already run before a stub is reached. In dev, stubs answer with sample data instead; see [Fixtures](#fixtures).
 
