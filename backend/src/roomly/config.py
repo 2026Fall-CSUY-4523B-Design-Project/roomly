@@ -2,8 +2,11 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 
 _DEV_DATABASE_URL = "postgresql://roomly@127.0.0.1:5433/postgres"
+# backend/src/roomly/config.py -> repo root. Installed wheels have no repo: set ROOMLY_MIGRATIONS_DIR.
+_REPO_MIGRATIONS = Path(__file__).resolve().parents[3] / "db" / "migrations"
 
 
 @dataclass(frozen=True)
@@ -13,6 +16,10 @@ class Settings:
     port: int
     log_level: str
     database_url: str
+    migrations_dir: Path = _REPO_MIGRATIONS
+    session_ttl_hours: int = 24 * 14
+    invitation_ttl_hours: int = 24 * 7
+    password_iterations: int = 600_000   # PBKDF2-SHA256 (OWASP); tests lower it for speed
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str]) -> Settings:
@@ -27,4 +34,8 @@ class Settings:
             log_level=environ.get("ROOMLY_LOG_LEVEL", "INFO" if prod else "DEBUG").upper(),
             # prod must set DATABASE_URL explicitly (KeyError = fail loudly)
             database_url=environ["DATABASE_URL"] if prod else environ.get("DATABASE_URL", _DEV_DATABASE_URL),
+            migrations_dir=Path(environ.get("ROOMLY_MIGRATIONS_DIR", _REPO_MIGRATIONS)),
+            session_ttl_hours=int(environ.get("ROOMLY_SESSION_TTL_HOURS", 24 * 14)),
+            invitation_ttl_hours=int(environ.get("ROOMLY_INVITATION_TTL_HOURS", 24 * 7)),
+            password_iterations=int(environ.get("ROOMLY_PASSWORD_ITERATIONS", 600_000)),
         )

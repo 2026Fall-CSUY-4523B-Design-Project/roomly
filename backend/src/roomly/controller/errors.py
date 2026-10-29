@@ -1,0 +1,38 @@
+"""Exception -> HTTP response mapping for the whole API."""
+
+import logging
+
+import psycopg
+from fastapi_reborn import FastAPI, JSONResponse, Request, Response
+from psycopg_pool import PoolTimeout
+
+from roomly.service.errors import ServiceError
+
+logger = logging.getLogger(__name__)
+
+
+def _service_error(request: Request, exc: Exception) -> Response:
+    assert isinstance(exc, ServiceError)
+    headers = {"WWW-Authenticate": "Bearer"} if exc.status == 401 else None
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status, headers=headers)
+
+
+def _integrity_error(request: Request, exc: Exception) -> Response:
+    """A database invariant caught what the service did not (a race, or a missing check)."""
+    assert isinstance(exc, psycopg.errors.IntegrityError)
+    constraint = exc.diag.constraint_name
+    logger.warning("integrity error on %s %s constraint=%s", request.method, request.path, constraint)
+    detail = exc.diag.message_primary or "the request conflicts with existing data"
+    return JSONResponse({"detail": detail, "constraint": constraint}, status_code=409)
+
+
+def _database_unavailable(request: Request, exc: Exception) -> Response:
+    logger.error("database unavailable on %s %s: %s", request.method, request.path, type(exc).__name__)
+    return JSONResponse({"detail": "the database is unavailable, try again shortly"}, status_code=503)
+
+
+def install_error_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(ServiceError, _service_error)
+    app.add_exception_handler(psycopg.errors.IntegrityError, _integrity_error)
+    app.add_exception_handler(psycopg.OperationalError, _database_unavailable)
+    app.add_exception_handler(PoolTimeout, _database_unavailable)
