@@ -2,10 +2,11 @@
 
 import pytest
 
-from conftest import Api
 from roomly.entity import Group, Message
 from roomly.mapper import GroupMapper, MessageMapper
 from roomly.service.notification_service import notify_group_message
+
+from conftest import Api
 
 pytestmark = pytest.mark.integration
 

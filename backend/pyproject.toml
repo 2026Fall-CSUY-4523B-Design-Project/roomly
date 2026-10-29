@@ -29,3 +29,6 @@ markers = [
 [tool.ruff.lint.flake8-bugbear]
 # rule() returns a dataclasses.field() carrying validation metadata, like field() itself
 extend-immutable-calls = ["roomly.dto.base.rule"]
+
+[tool.ruff.lint.isort]
+known-local-folder = ["conftest"]

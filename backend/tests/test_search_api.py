@@ -27,7 +27,7 @@ def test_hard_constraints_and_unknown_values(api: Api) -> None:
 def test_amenities_dates_fees_and_viewport(api: Api) -> None:
     token, _ = api.user()
     a = api.listing(token, amenities=["Laundry", "Elevator"], move_in_date="2026-11-15", broker_fee_cents=0)
-    b = api.listing(token, amenities=["laundry"], move_in_date="2027-01-10", broker_fee_cents=...,
+    api.listing(token, amenities=["laundry"], move_in_date="2027-01-10", broker_fee_cents=...,
                     latitude=..., longitude=...)
     assert ids(api.get("/search?amenity=elevator&amenity=LAUNDRY")) == {a["id"]}
     assert ids(api.get("/search?move_in_to=2026-12-31")) == {a["id"]}
