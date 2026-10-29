@@ -29,6 +29,16 @@ All notable changes to this project are documented here, following [Keep a Chang
 - GitHub Actions: `ci.yml` (backend lint+test, frontend build) and `release.yml` (tag `v*` -> tests, release.sh, GitHub Release with artifacts). Private submodule is cloned over SSH with a read-only deploy key (`SUBMODULE_SSH_KEY` secret).
 
 ### Changed
+- The backend runs on FastAPI (0.162) and pydantic 2, served by uvicorn, instead of fastapi-reborn:
+  - DTOs are frozen pydantic models (`dto.base.DTO`). Strings are stripped except `Secret` passwords, request numbers and booleans are strict (`true` is not 1, `"3"` is not 3), `Distinct` rejects repeated list items, and patterns match the whole value. `check()` still reports each cross-field problem at its field.
+  - Endpoints declare typed path and query parameters and request DTOs, so FastAPI validates them and documents them in OpenAPI. `Depends` resolves the services and the bearer user. Blocking endpoints are plain `def` and run in FastAPI's thread pool.
+  - 422 bodies keep the shape `{"detail": [{"type", "loc", "msg", "input"}]}` and now use pydantic's error types: a non-object body is `model_type`, and a blank poll option or amenity is a `string_too_short` at that item.
+  - `/docs` serves Swagger UI and `/redoc` serves ReDoc; `/openapi.json` is unchanged.
+  - Tests use FastAPI's `TestClient` (dev dependency `httpx2`).
 - CI and release start a `postgres:18` service for the backend tests; the release also ships `roomly-db-<v>.tar.gz` (the migrations).
 - Backend depends on `psycopg[binary]` and `psycopg-pool`.
 - Node 20 -> 24 (`frontend/.nvmrc`, `engines.node >=24`); CI actions bumped to their Node 24 majors (checkout v7, setup-node v7, pnpm/action-setup v6, setup-uv v10, ssh-agent v0.10).
+
+### Removed
+- The `packages/fastapi-reborn` submodule, the `SUBMODULE_SSH_KEY` deploy-key steps in CI and release, and the fastapi-reborn wheel from releases.
+- The hand-written validator and JSON Schema generator in `dto/base.py` (`rule`, `parse`, `schema_of`, `body`, `returns`) and the controller helpers that wrapped them (`read`, `run`, `path_uuid`, `query_uuid`, `paging`, `choice`), as well as the `MessageCursor` DTO.

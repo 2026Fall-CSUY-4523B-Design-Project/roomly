@@ -5,7 +5,7 @@ Roomly is a mono repo that contains multiple packages and applications related t
 
 ## Structure
 - Frontend: Node, Next.js 12 pages router
-- Backend: Python, fastapi-reborn; layers DTO → controller → service → SQL mapper → entity ([docs/backend.md](docs/backend.md))
+- Backend: Python, FastAPI + pydantic on uvicorn; layers DTO → controller → service → SQL mapper → entity ([docs/backend.md](docs/backend.md))
 - DB: PostgreSQL as primary, SQLite as fallback
 
 ```
@@ -15,7 +15,7 @@ backend/
     service/      SSDS control classes: method stubs (NotImplementedError -> HTTP 501)
     mapper/       hand-written SQL, one mapper per aggregate
     entity/       one dataclass per table
-    dto/          request/response bodies with validation rules
+    dto/          request/response bodies: pydantic models with validation rules
     db/           Database (Postgres primary, SQLite fallback), Tx, migrations
   tests/          pytest; database tests run on both engines
 frontend/
@@ -28,7 +28,6 @@ db/
   migrations/postgres/   NNNN_name.sql, PostgreSQL dialect
   migrations/sqlite/     the same versions in SQLite dialect
   data/                  local Postgres cluster (gitignored)
-packages/     git submodules (fastapi-reborn)
 script/       run.sh · backend.sh · frontend.sh · database.sh · release.sh
 .github/      CI and release workflows
 docs/         backend.md
@@ -36,18 +35,16 @@ docs/         backend.md
 
 ## Quick start
 ```sh
-git clone --recurse-submodules <repo>   # or: git submodule update --init
+git clone <repo>
 cd roomly
-script/run.sh                           # = script/run.sh --dev
+script/run.sh        # = script/run.sh --dev
 ```
-
-`fastapi-reborn` is a private submodule cloned over SSH, so your GitHub account needs access to it.
 
 `script/run.sh --dev` starts local Postgres (`127.0.0.1:5433`, data in `db/data`), the backend (`:8000`) and the frontend (`:3000`, `/api/*` is rewritten to the backend). Output is prefixed per service (`[db]`, `[backend]`, `[frontend]`); Ctrl-C stops everything.
 
 `script/run.sh --prod` builds and starts the backend and frontend against an external database; `DATABASE_URL` must be set.
 
-The backend applies pending migrations when it starts. All 56 endpoints are declared with their DTOs; the service methods behind them are stubs (see [docs/backend.md](docs/backend.md#to-do)).
+The backend applies pending migrations when it starts. API docs: <http://127.0.0.1:8000/docs> (Swagger UI), `/redoc`, `/openapi.json`. All 56 endpoints are declared with their DTOs; the service methods behind them are stubs (see [docs/backend.md](docs/backend.md#to-do)).
 
 **Fixtures for frontend work.** In dev, a stub answers with a sample response from `backend/src/roomly/fixtures.py` instead of 501. The response has the route's real status code and an `X-Roomly-Fixture: 1` header. Request validation (422) and the bearer check (401: send any token) still apply, so the frontend can be built against the real API shape before the logic exists. Methods that get implemented return real data automatically. `ROOMLY_FIXTURES=off` turns this off; it is off by default in prod.
 
@@ -94,11 +91,10 @@ The Postgres runs use a throwaway `roomly_test` database (`ROOMLY_TEST_DATABASE_
 
 ## CI and releases
 - `ci.yml`: backend lint + test (with a `postgres:18` service), frontend build.
-- `release.yml`: pushing a `v*` tag runs the tests, `script/release.sh`, and publishes a GitHub Release with the backend and `fastapi-reborn` wheels plus the frontend and migrations tarballs.
-- CI clones the private submodule with a read-only deploy key (`SUBMODULE_SSH_KEY` secret).
+- `release.yml`: pushing a `v*` tag runs the tests, `script/release.sh`, and publishes a GitHub Release with the backend wheel plus the frontend and migrations tarballs.
 
 ## Dependencies
-- [fastapi-reborn (v0.1.0)](https://github.com/2026Fall-CSUY-4523B-Design-Project/fastapi-reborn)
+- [fastapi (v0.162)](https://fastapi.tiangolo.com/) + [pydantic (v2.14)](https://docs.pydantic.dev/), served by [uvicorn (v0.54)](https://www.uvicorn.org/)
     -- [python (v3.14.0)](https://www.python.org/downloads/release/python-3140/)
     -- [uv (v0.13.1)](https://github.com/astral-sh/uv)
 - [nextjs (v12.0.0)](https://github.com/vercel/next.js)

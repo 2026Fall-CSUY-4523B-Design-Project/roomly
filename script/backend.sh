@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the Roomly API (fastapi-reborn). Usage: script/backend.sh [dev|prod|test|lint|migrate]
+# Run the Roomly API (FastAPI on uvicorn). Usage: script/backend.sh [dev|prod|test|lint|migrate]
 # dev/prod apply pending db/migrations before serving; prod needs DATABASE_URL in the environment.
 # test needs Postgres (script/database.sh); it uses a throwaway roomly_test database.
 set -euo pipefail
