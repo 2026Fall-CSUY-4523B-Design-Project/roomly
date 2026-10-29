@@ -4,18 +4,34 @@
 Roomly is a mono repo that contains multiple packages and applications related to the Roomly project. This repository is structured to facilitate development, testing, and deployment of various components in a unified manner.
 
 ## Structure
-- Frontend: node, nextjs (frontend only)
-- Backend: python, fastapi-reborn
-- DB: postgres/sqlite
+- Frontend: Node, Next.js 12 pages router ([docs/frontend.md](docs/frontend.md))
+- Backend: Python, fastapi-reborn; layers DTO → controller → service → SQL mapper → entity ([docs/backend.md](docs/backend.md))
+- DB: PostgreSQL as primary, SQLite as fallback
 
 ```
-backend/     Python API (src/roomly, tests/)
-frontend/    Next.js app (pages/)
-db/          migrations/ (local data in db/data, gitignored)
-packages/    git submodules (fastapi-reborn)
-script/      run.sh · backend.sh · frontend.sh · database.sh · release.sh
-.github/     CI and release workflows
-docs/
+backend/
+  src/roomly/
+    controller/   HTTP routers, one per SSDS use case (§8.1.2.1–8)
+    service/      use-case rules and transactions (SSDS control classes)
+    mapper/       hand-written SQL, one mapper per aggregate
+    entity/       one dataclass per table
+    dto/          request/response bodies with validation rules
+    db/           Database (Postgres primary, SQLite fallback), Tx, migrations
+  tests/          pytest; database tests run on both engines
+frontend/
+  pages/          routes (search, listing card, sign-in/up, groups, compare, notifications, admin)
+  components/     Layout, ListingCard, SprintNotice, ...
+  lib/            api client, session, formatting
+  styles/         design tokens and CSS modules
+  tests/          node:test for lib/
+db/
+  migrations/postgres/   NNNN_name.sql, PostgreSQL dialect
+  migrations/sqlite/     the same versions in SQLite dialect
+  data/                  local Postgres cluster (gitignored)
+packages/     git submodules (fastapi-reborn)
+script/       run.sh · backend.sh · frontend.sh · database.sh · release.sh
+.github/      CI and release workflows
+docs/         backend.md · frontend.md
 ```
 
 ## Quick start
@@ -31,14 +47,24 @@ script/run.sh                           # = script/run.sh --dev
 
 `script/run.sh --prod` builds and starts the backend and frontend against an external database; `DATABASE_URL` must be set.
 
+The backend applies pending migrations when it starts. Grant yourself the administrator role with `script/backend.sh admin you@example.com`; administrators cannot be group members.
+
+## Database: PostgreSQL primary, SQLite fallback
+- At startup the backend connects to `DATABASE_URL` (PostgreSQL).
+- If Postgres is unreachable and a fallback file is configured, it logs a warning and runs on SQLite instead. The fallback is `db/roomly.sqlite3` in dev and off in prod; `ROOMLY_SQLITE_FALLBACK` changes it.
+- `DATABASE_URL=sqlite:///path/to/file.sqlite3` runs on SQLite only.
+- `GET /health` reports which engine is in use: `{"status": "ok", "database": "postgres"}`.
+- The fallback is a separate database: data written to SQLite is not copied back into Postgres.
+- Both engines run the same schema and the same invariants, for example at most six members per group, one vote per member and one notification per event. See [docs/backend.md](docs/backend.md#database).
+
 ## Scripts
 | Script | Usage |
 | --- | --- |
 | `script/run.sh` | `[--dev\|--prod]` whole stack, see above |
-| `script/backend.sh` | `[dev\|prod\|test\|lint]` API server, pytest, ruff |
-| `script/frontend.sh` | `[dev\|build\|start]` Next.js via pnpm |
+| `script/backend.sh` | `[dev\|prod\|test\|lint\|migrate\|admin <email> [--revoke]]` API server, pytest, ruff, apply migrations, grant/revoke admin |
+| `script/frontend.sh` | `[dev\|build\|start\|test]` Next.js via pnpm; `test` runs the `lib/` unit tests |
 | `script/database.sh` | `[start\|reset\|psql]` local Postgres in the foreground (`ROOMLY_DB_PORT` overrides 5433) |
-| `script/release.sh` | `[version]` builds wheels and the frontend tarball into `dist/` |
+| `script/release.sh` | `[version]` builds wheels, the frontend tarball and the migrations tarball into `dist/` |
 
 ## Configuration
 Copy [.env.example](.env.example) and export it, or set the variables in your deploy environment.
@@ -48,19 +74,28 @@ Copy [.env.example](.env.example) and export it, or set the variables in your de
 | `ROOMLY_ENV` | `dev` | `dev` or `prod`; `prod` binds `0.0.0.0`, logs at INFO and requires `DATABASE_URL` |
 | `ROOMLY_HOST` / `ROOMLY_PORT` | `127.0.0.1` (`0.0.0.0` in prod) / `8000` | backend bind address |
 | `ROOMLY_LOG_LEVEL` | `DEBUG` (`INFO` in prod) | |
-| `DATABASE_URL` | `postgresql://roomly@127.0.0.1:5433/postgres` in dev | required in prod |
+| `DATABASE_URL` | `postgresql://roomly@127.0.0.1:5433/postgres` in dev | required in prod; `sqlite:///path` = SQLite only |
+| `ROOMLY_SQLITE_FALLBACK` | `db/roomly.sqlite3` in dev, off in prod | SQLite file used when Postgres is unreachable at startup; `off` disables |
+| `ROOMLY_MIGRATIONS_DIR` | repo `db/migrations` | set it when running from installed wheels (the release ships `roomly-db-<v>.tar.gz`) |
+| `ROOMLY_SESSION_TTL_HOURS` | `336` (14 days) | sign-in session lifetime |
+| `ROOMLY_INVITATION_TTL_HOURS` | `168` (7 days) | group invitation lifetime |
+| `ROOMLY_PASSWORD_ITERATIONS` | `600000` | PBKDF2 iterations for new password hashes |
 | `ROOMLY_API_URL` | `http://127.0.0.1:8000` | frontend rewrite target, read by `next.config.js` at build/start |
 
 ## Testing
 ```sh
-script/backend.sh test    # pytest
+script/database.sh start  # local Postgres for the Postgres half of the suite (another terminal)
+script/backend.sh test    # pytest: every database test runs on Postgres and on SQLite
 script/backend.sh lint    # ruff
+script/frontend.sh test   # node:test for frontend lib/
 script/frontend.sh build  # frontend build check
 ```
 
+The Postgres runs use a throwaway `roomly_test` database (`ROOMLY_TEST_DATABASE_URL` overrides it). Without a reachable server they are skipped locally and fail in CI.
+
 ## CI and releases
-- `ci.yml`: backend lint + test, frontend build.
-- `release.yml`: pushing a `v*` tag runs the tests, `script/release.sh`, and publishes a GitHub Release with the backend and `fastapi-reborn` wheels plus the frontend tarball.
+- `ci.yml`: backend lint + test (with a `postgres:18` service), frontend test + build.
+- `release.yml`: pushing a `v*` tag runs the tests, `script/release.sh`, and publishes a GitHub Release with the backend and `fastapi-reborn` wheels plus the frontend and migrations tarballs.
 - CI clones the private submodule with a read-only deploy key (`SUBMODULE_SSH_KEY` secret).
 
 ## Dependencies
@@ -69,6 +104,7 @@ script/frontend.sh build  # frontend build check
     -- [uv (v0.13.1)](https://github.com/astral-sh/uv)
 - [nextjs (v12.0.0)](https://github.com/vercel/next.js)
     -- [node (v24.x LTS)](https://nodejs.org/en/download) + [pnpm (v10.10.0)](https://pnpm.io/)
+- [psycopg (v3.2+)](https://www.psycopg.org/psycopg3/) + psycopg-pool, the PostgreSQL driver
 - [postgresql (v18.6)](https://www.postgresql.org/download/)
 - [sqlite (v3.54.0)](https://www.sqlite.org/download.html)
 

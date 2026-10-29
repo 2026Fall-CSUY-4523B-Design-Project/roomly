@@ -12,7 +12,7 @@ export default function ComparePage() {
       <p className="eyebrow">Comparison</p>
       <h1>Line them up, side by side.</h1>
       <p className="lede">
-        Pick two to six listings and see every value aligned. The best value is highlighted only when at least
+        Pick two to four listings and see every value aligned. The best value is highlighted only when at least
         two listings have a known value that isn&rsquo;t tied; Unknown is never &ldquo;best&rdquo;.
       </p>
       <div style={{ marginTop: 28 }}>

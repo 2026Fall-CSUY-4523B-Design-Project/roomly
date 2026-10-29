@@ -1,7 +1,8 @@
 """Roomly API entrypoint. Run: script/backend.sh [dev|prod]
 
 Layers (SSDS §7, §9.1): controller (HTTP) -> service (use-case rules, transactions)
--> mapper (SQL) -> PostgreSQL. DTOs cross the HTTP boundary; entities cross the SQL one.
+-> mapper (SQL) -> PostgreSQL, or the SQLite fallback. DTOs cross the HTTP boundary; entities
+cross the SQL one.
 """
 
 import logging

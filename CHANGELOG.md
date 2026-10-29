@@ -4,7 +4,33 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
+### Added
+- Database schema, 21 tables, in two dialects: `db/migrations/postgres/0001_init.sql` and `db/migrations/sqlite/0001_init.sql`. Unknown values are NULL and money is integer cents. The database itself enforces the SSDS invariants: at most six members per group, administrators never members, one owner, at most three commute destinations, searchable listings in scope (R-2.1), closed polls reject votes, one reaction and one vote per member, one notification per event, and retried fetches not stored twice.
+- PostgreSQL as the primary database with a SQLite fallback. When `DATABASE_URL` is unreachable at startup, the backend logs a warning and runs on `ROOMLY_SQLITE_FALLBACK` (`db/roomly.sqlite3` in dev, off in prod). `DATABASE_URL=sqlite:///...` runs on SQLite only, and `/health` reports the engine in use.
+- Migration runner: applies each file once and records it in `schema_migration`, under an advisory lock on Postgres or `BEGIN IMMEDIATE` on SQLite. It runs on server start and from `script/backend.sh migrate`.
+- Backend layers for all eight SSDS use cases (§8.1.2.1–8), 56 endpoints in total:
+  - DTOs with declarative validation and FastAPI-style 422 errors;
+  - controllers;
+  - services (the SSDS control classes);
+  - hand-written SQL mappers;
+  - entities.
+  See `docs/backend.md` for the endpoint map and traceability.
+- Accounts: bearer sessions (only the token's SHA-256 is stored) and PBKDF2 password hashes. Account deletion keeps "Deleted user" attribution (R-1.4).
+- `script/backend.sh admin <email> [--revoke]` grants or revokes the administrator role.
+- Frontend skeleton:
+  - `lib/api.js` (the `/api` client and `ApiError` with per-field 422 messages), `lib/auth.js` (the session, kept in memory when storage is blocked), `lib/format.js` (cents and Unknown labels);
+  - the layout and design tokens, with light and dark themes;
+  - working pages for search, the listing card, sign-up/sign-in and group management;
+  - shells for compare, notifications, the group room and admin, each naming the sprint that delivers it.
+- Tests:
+  - 143 backend tests; every database test runs on both Postgres and SQLite;
+  - 15 frontend `node:test` tests (`script/frontend.sh test`).
+- CI runs the frontend tests.
+- `docs/backend.md` and `docs/frontend.md`.
+
 ### Changed
+- CI and release start a `postgres:18` service for the backend tests; the release also ships `roomly-db-<v>.tar.gz` (the migrations).
+- Backend depends on `psycopg[binary]` and `psycopg-pool`.
 - Node 20 -> 24 (`frontend/.nvmrc`, `engines.node >=24`); CI actions bumped to their Node 24 majors (checkout v7, setup-node v7, pnpm/action-setup v6, setup-uv v10, ssh-agent v0.10).
 
 ### Added
