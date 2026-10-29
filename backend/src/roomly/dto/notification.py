@@ -1,19 +1,19 @@
 """DTOs for Notifications (§8.1.2.8, R-6)."""
 
 import datetime as dt
-from dataclasses import dataclass
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from roomly.dto.base import rule
+from pydantic import Field, StrictBool
+
+from roomly.dto.base import DTO, Distinct
 from roomly.entity import Notification, User
 
 NotificationKind = Literal["new_match", "price_change", "removed", "message"]
 ALL_KINDS: list[NotificationKind] = ["new_match", "price_change", "removed", "message"]
 
 
-@dataclass(frozen=True)
-class NotificationDTO:
+class NotificationDTO(DTO):
     id: UUID
     kind: str
     title: str
@@ -29,8 +29,7 @@ class NotificationDTO:
                    created_at=n.created_at, read=n.read_at is not None, read_at=n.read_at)
 
 
-@dataclass(frozen=True)
-class NotificationListDTO:
+class NotificationListDTO(DTO):
     items: list[NotificationDTO]
     total: int
     unread: int
@@ -38,13 +37,12 @@ class NotificationListDTO:
     offset: int
 
 
-@dataclass(frozen=True)
-class NotificationSettingsDTO:
+class NotificationSettingsDTO(DTO):
     """Which alerts a user receives and how (R-6). Quiet hours are local times, both or neither."""
 
-    kinds: list[NotificationKind] = rule(default_factory=lambda: list(ALL_KINDS), unique=True)
-    email: bool = True
-    digest: bool = False
+    kinds: Annotated[list[NotificationKind], Distinct] = Field(default_factory=lambda: list(ALL_KINDS))
+    email: StrictBool = True
+    digest: StrictBool = False
     quiet_start: dt.time | None = None
     quiet_end: dt.time | None = None
 

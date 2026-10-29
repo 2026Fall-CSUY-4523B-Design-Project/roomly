@@ -115,13 +115,14 @@ LISTINGS = [
         id=KNICKERBOCKER, title="Sunny 2BR near the Jefferson L", address_line="214 Knickerbocker Ave", unit="3F",
         borough="brooklyn", advertised_rent_cents=320_000, net_effective_rent_cents=295_000, bedrooms=2,
         bathrooms=1.0, area_sqft=850, move_in_date=dt.date(2026, 12, 1), amenities=["dishwasher", "laundry_in_building"],
-        coordinates=Coordinates(40.7046, -73.9213), availability="available", is_synthetic=True,
+        coordinates=Coordinates(latitude=40.7046, longitude=-73.9213), availability="available", is_synthetic=True,
         has_conflicts=True, updated_at=_at(28, 9), unknown=[],
     ),
     ListingSummaryDTO(
         id=STEINWAY, title="Astoria studio", address_line="31-12 Steinway St", unit=None, borough="queens",
         advertised_rent_cents=210_000, net_effective_rent_cents=None, bedrooms=0, bathrooms=None, area_sqft=None,
-        move_in_date=None, amenities=[], coordinates=Coordinates(40.7605, -73.9150), availability="unknown",
+        move_in_date=None, amenities=[], coordinates=Coordinates(latitude=40.7605, longitude=-73.9150),
+        availability="unknown",
         is_synthetic=True, has_conflicts=False, updated_at=_at(26, 15),
         unknown=["bathrooms", "area_sqft", "move_in_date"],
     ),
@@ -178,7 +179,7 @@ DUPLICATE = DuplicateDTO(
 
 # --- search --------------------------------------------------------------------------
 
-SEARCH_RESULTS = Page(items=LISTINGS, total=3, limit=20, offset=0)
+SEARCH_RESULTS = Page[ListingSummaryDTO](items=LISTINGS, total=3, limit=20, offset=0)
 
 SAVED_SEARCHES = [
     SavedSearchDTO(id=_id(7, 1), name="2BR in Brooklyn under $3.5k",
@@ -298,20 +299,21 @@ FIXTURES: dict[str, Any] = {
     "GET /admin/sources": SOURCES,
     "POST /admin/sources": SOURCES[0],
     "PATCH /admin/sources/{source_id}": SOURCES[0],
-    "GET /admin/duplicates": Page(items=[DUPLICATE], total=1, limit=20, offset=0),
+    "GET /admin/duplicates": Page[DuplicateDTO](items=[DUPLICATE], total=1, limit=20, offset=0),
     "POST /admin/duplicates/{candidate_id}/merge": DuplicateDTO(**{**vars(DUPLICATE), "status": "merged",
                                                                    "reviewed_at": _at(29, 10)}),
     "POST /admin/duplicates/{candidate_id}/keep-separate": DuplicateDTO(**{**vars(DUPLICATE), "status": "separate",
                                                                            "reviewed_at": _at(29, 10)}),
     "POST /admin/duplicates/{candidate_id}/split": DuplicateDTO(**{**vars(DUPLICATE), "status": "separate",
                                                                    "reviewed_at": _at(29, 11)}),
-    "GET /admin/reports": Page(items=[REPORT], total=1, limit=20, offset=0),
+    "GET /admin/reports": Page[ReportDTO](items=[REPORT], total=1, limit=20, offset=0),
     "POST /admin/reports/{report_id}/resolve": ReportDTO(**{**vars(REPORT), "status": "resolved",
                                                             "resolved_at": _at(29, 10)}),
     "GET /search": SEARCH_RESULTS,
     "GET /saved-searches": SAVED_SEARCHES,
     "POST /saved-searches": SAVED_SEARCHES[0],
-    "GET /saved-searches/{search_id}/results": Page(items=[LISTINGS[0]], total=1, limit=20, offset=0),
+    "GET /saved-searches/{search_id}/results": Page[ListingSummaryDTO](items=[LISTINGS[0]], total=1, limit=20,
+                                                                       offset=0),
     "GET /me/commute-destinations": DESTINATIONS,
     "POST /me/commute-destinations": DESTINATIONS[0],
     "POST /comparisons/preview": TABLE,

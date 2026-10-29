@@ -10,7 +10,8 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi_reborn import FastAPI
+import uvicorn
+from fastapi import FastAPI
 
 from roomly.config import Settings
 from roomly.controller import ROUTERS
@@ -43,7 +44,6 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         version=VERSION,
         description="Group apartment search for NYC renters (SSDS-001).",
         lifespan=lifespan,
-        security_schemes={"bearerAuth": {"type": "http", "scheme": "bearer"}},
     )
     app.state.settings = settings
     app.state.database = database
@@ -67,7 +67,7 @@ def main() -> None:
     settings = Settings.from_env(os.environ)
     logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     logger.info("starting env=%s on %s:%s", settings.env, settings.host, settings.port)
-    app.run(host=settings.host, port=settings.port, log_level=settings.log_level)
+    uvicorn.run(app, host=settings.host, port=settings.port, log_level=settings.log_level.lower())
 
 
 if __name__ == "__main__":

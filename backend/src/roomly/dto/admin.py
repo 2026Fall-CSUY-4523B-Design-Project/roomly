@@ -1,37 +1,35 @@
 """DTOs for Listing Administration (§8.1.2.4, R-2.3, R-2.4)."""
 
 import datetime as dt
-from dataclasses import dataclass, field
 from typing import Any, Literal
 from uuid import UUID
 
-from roomly.dto.base import rule
+from pydantic import Field, StrictBool
+
+from roomly.dto.base import DTO
 from roomly.dto.listing import ListingSummaryDTO
 from roomly.entity import ListingSource
 
 SourceKind = Literal["feed", "url", "manual"]
 
 
-@dataclass(frozen=True)
-class CreateSourceRequest:
-    name: str = rule(min_len=1, max_len=80)
+class CreateSourceRequest(DTO):
+    name: str = Field(min_length=1, max_length=80)
     kind: SourceKind = "feed"
-    enabled: bool = True
-    is_synthetic: bool = True
-    config: dict[str, Any] = field(default_factory=dict)
+    enabled: StrictBool = True
+    is_synthetic: StrictBool = True
+    config: dict[str, Any] = Field(default_factory=dict)
 
 
-@dataclass(frozen=True)
-class UpdateSourceRequest:
+class UpdateSourceRequest(DTO):
     """Only the fields present are changed."""
 
-    name: str | None = rule(default=None, min_len=1, max_len=80)
-    enabled: bool | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    enabled: StrictBool | None = None
     config: dict[str, Any] | None = None
 
 
-@dataclass(frozen=True)
-class SourceDTO:
+class SourceDTO(DTO):
     id: UUID
     name: str
     kind: str
@@ -48,8 +46,7 @@ class SourceDTO:
                    config=s.config, last_run_at=s.last_run_at, last_error=s.last_error, created_at=s.created_at)
 
 
-@dataclass(frozen=True)
-class DuplicateSideDTO:
+class DuplicateSideDTO(DTO):
     record_id: UUID
     original_url: str | None
     collected_at: dt.datetime
@@ -57,8 +54,7 @@ class DuplicateSideDTO:
     listing_status: str | None
 
 
-@dataclass(frozen=True)
-class DuplicateDTO:
+class DuplicateDTO(DTO):
     """A pair of records that may describe the same unit, waiting for (or after) review."""
 
     id: UUID
@@ -70,6 +66,5 @@ class DuplicateDTO:
     b: DuplicateSideDTO
 
 
-@dataclass(frozen=True)
-class ResolveReportRequest:
+class ResolveReportRequest(DTO):
     status: Literal["resolved", "dismissed"]

@@ -1,35 +1,33 @@
 """DTOs for Login (§8.1.2.1, R-1.1, R-1.4)."""
 
 import datetime as dt
-from dataclasses import dataclass
+from typing import Annotated
 from uuid import UUID
 
-from roomly.dto.base import EMAIL_PATTERN, rule
+from pydantic import Field, StringConstraints
+
+from roomly.dto.base import DTO, Email, Secret
 from roomly.entity import User
 
 
-@dataclass(frozen=True)
-class SignUpRequest:
-    email: str = rule(pattern=EMAIL_PATTERN, lower=True, max_len=254)
-    password: str = rule(strip=False, min_len=8, max_len=128)
-    display_name: str | None = rule(default=None, min_len=1, max_len=60)
+class SignUpRequest(DTO):
+    email: Email
+    password: Secret = Field(min_length=8, max_length=128)
+    display_name: str | None = Field(default=None, min_length=1, max_length=60)
 
 
-@dataclass(frozen=True)
-class SignInRequest:
-    email: str = rule(lower=True, min_len=1, max_len=254)
-    password: str = rule(strip=False, min_len=1, max_len=128)
+class SignInRequest(DTO):
+    email: Annotated[str, StringConstraints(to_lower=True)] = Field(min_length=1, max_length=254)
+    password: Secret = Field(min_length=1, max_length=128)
 
 
-@dataclass(frozen=True)
-class DeleteAccountRequest:
+class DeleteAccountRequest(DTO):
     """Deletion is confirmed by re-entering the password."""
 
-    password: str = rule(strip=False, min_len=1, max_len=128)
+    password: Secret = Field(min_length=1, max_length=128)
 
 
-@dataclass(frozen=True)
-class UserDTO:
+class UserDTO(DTO):
     id: UUID
     email: str
     display_name: str | None
@@ -43,8 +41,7 @@ class UserDTO:
                    created_at=user.created_at)
 
 
-@dataclass(frozen=True)
-class SessionDTO:
+class SessionDTO(DTO):
     """Returned once at sign-up/sign-in. Send ``token`` as ``Authorization: Bearer <token>``."""
 
     token: str

@@ -1,18 +1,19 @@
 """DTOs for Group Discussion (§8.1.2.7, R-5)."""
 
 import datetime as dt
-from dataclasses import dataclass
+from typing import Annotated
 from uuid import UUID
 
-from roomly.dto.base import rule
+from pydantic import Field, StringConstraints
+
+from roomly.dto.base import DTO, Distinct
 from roomly.dto.common import PersonRef
 
 
-@dataclass(frozen=True)
-class PostMessageRequest:
+class PostMessageRequest(DTO):
     """A message in the room, optionally in the thread of one listing or one comparison."""
 
-    body: str = rule(min_len=1, max_len=4000)
+    body: str = Field(min_length=1, max_length=4000)
     listing_id: UUID | None = None
     comparison_id: UUID | None = None
 
@@ -22,43 +23,27 @@ class PostMessageRequest:
         return []
 
 
-@dataclass(frozen=True)
-class MessageCursor:
-    """``?before=<ISO time>``: page back through a room."""
-
-    before: dt.datetime
+class ReactionRequest(DTO):
+    emoji: str = Field(min_length=1, max_length=16)
 
 
-@dataclass(frozen=True)
-class ReactionRequest:
-    emoji: str = rule(min_len=1, max_len=16)
+class CreatePollRequest(DTO):
+    question: str = Field(min_length=1, max_length=200)
+    options: Annotated[list[Annotated[str, StringConstraints(min_length=1, max_length=120)]], Distinct] = Field(
+        min_length=2, max_length=4)
 
 
-@dataclass(frozen=True)
-class CreatePollRequest:
-    question: str = rule(min_len=1, max_len=200)
-    options: list[str] = rule(min_items=2, max_items=4, unique=True)
-
-    def check(self) -> list[tuple[str, str]]:
-        if any(not o.strip() or len(o.strip()) > 120 for o in self.options):
-            return [("options", "each option must be 1-120 characters")]
-        return []
-
-
-@dataclass(frozen=True)
-class VoteRequest:
+class VoteRequest(DTO):
     option_id: UUID
 
 
-@dataclass(frozen=True)
-class ReactionCountDTO:
+class ReactionCountDTO(DTO):
     emoji: str
     count: int
     mine: bool
 
 
-@dataclass(frozen=True)
-class MessageDTO:
+class MessageDTO(DTO):
     id: UUID
     group_id: UUID
     author: PersonRef
@@ -69,16 +54,14 @@ class MessageDTO:
     reactions: list[ReactionCountDTO]
 
 
-@dataclass(frozen=True)
-class PollOptionDTO:
+class PollOptionDTO(DTO):
     id: UUID
     position: int
     text: str
     votes: int
 
 
-@dataclass(frozen=True)
-class PollDTO:
+class PollDTO(DTO):
     """Totals count current members only. A poll result is not a rental commitment."""
 
     id: UUID
