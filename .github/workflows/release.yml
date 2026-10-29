@@ -43,6 +43,7 @@ jobs:
         with:
           node-version-file: frontend/.nvmrc
       - run: script/backend.sh test
+      - run: script/frontend.sh test
       - run: script/release.sh "${GITHUB_REF_NAME}"
       - env:
           GH_TOKEN: ${{ github.token }}

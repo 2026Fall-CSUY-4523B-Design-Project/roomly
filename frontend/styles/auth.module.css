@@ -1,0 +1,27 @@
+.wrap {
+  display: grid;
+  place-items: start center;
+  padding: 56px var(--gutter) 88px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 420px;
+}
+
+.panel h1 {
+  font-size: 2.1rem;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.switch {
+  margin-top: 20px;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
