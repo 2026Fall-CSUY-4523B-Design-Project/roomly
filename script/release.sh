@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Build release artifacts into dist/. Usage: script/release.sh [version]
-#   dist/roomly-<v>-py3-none-any.whl                  backend
-#   dist/fastapi_reborn-<v>-py3-none-any.whl         submodule library
+#   dist/roomly-<v>-py3-none-any.whl                  backend (FastAPI and the drivers come from PyPI)
 #   dist/roomly-frontend-<v>.tar.gz                   Next.js build (.next + package files)
 #   dist/roomly-db-<v>.tar.gz                         db/migrations (point ROOMLY_MIGRATIONS_DIR at it)
-# On the target host: install both wheels with uv, then in the unpacked frontend
+# On the target host: install the wheel with uv, then in the unpacked frontend
 # run `pnpm install --prod && pnpm start`.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -13,8 +12,7 @@ VERSION="${VERSION#v}"
 DIST="$ROOT/dist"
 rm -rf "$DIST" && mkdir -p "$DIST"
 
-echo "== backend wheels"
-uv build --wheel --out-dir "$DIST" "$ROOT/packages/fastapi-reborn"
+echo "== backend wheel"
 uv build --wheel --out-dir "$DIST" "$ROOT/backend"
 
 echo "== frontend build"

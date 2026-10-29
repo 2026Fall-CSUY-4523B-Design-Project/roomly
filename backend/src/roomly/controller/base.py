@@ -1,88 +1,57 @@
-"""Controller helpers: the HTTP boundary between fastapi-reborn and the services.
+"""Controller helpers: the HTTP boundary between FastAPI and the services.
 
-Controllers stay thin: read and validate the request into a DTO, resolve the caller, call
-one service method in a worker thread (database drivers block), return its DTO.
+Controllers stay thin: FastAPI validates path, query and body into typed values and DTOs (422),
+the dependencies below resolve the services and the caller (401), and the endpoint calls one
+service method and returns its DTO. Endpoints and dependencies that reach the database are
+plain ``def``: FastAPI runs them in its thread pool, because the database drivers block.
 """
 
-import asyncio
-from collections.abc import Callable
-from typing import Any
-from uuid import UUID
+from typing import Annotated, Any
 
-from fastapi_reborn import Request
-from fastapi_reborn.params import RequestValidationError
-from fastapi_reborn.security import HTTPBearer
+from fastapi import Depends, Query, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, ValidationError
 
 from roomly import fixtures
-from roomly.dto.base import parse
 from roomly.entity import User
 from roomly.service import Services
 
-BEARER: list[dict[str, list[str]]] = [{"bearerAuth": []}]   # OpenAPI security requirement
 MAX_PAGE = 100
 
-_bearer = HTTPBearer()
+_bearer = HTTPBearer(scheme_name="bearerAuth")   # 401 + WWW-Authenticate: Bearer without a token
 
 
 def services(request: Request) -> Services:
     return request.app.state.services
 
 
-async def run[T](fn: Callable[..., T], /, *args: Any, **kwargs: Any) -> T:
-    """Run a blocking service call off the event loop."""
-    return await asyncio.to_thread(fn, *args, **kwargs)
+def bearer_token(credentials: Annotated[HTTPAuthorizationCredentials, Depends(_bearer)]) -> str:
+    return credentials.credentials
 
 
-async def read[T](request: Request, cls: type[T]) -> T:
-    """The JSON body validated into a request DTO (400 if not JSON, 422 if invalid)."""
-    return parse(cls, await request.json())
-
-
-def bearer_token(request: Request) -> str:
-    return _bearer(request).credentials  # type: ignore[union-attr]  # auto_error: never None
-
-
-async def current_user(request: Request) -> User:
+def current_user(request: Request, token: Annotated[str, Depends(bearer_token)]) -> User:
     """The signed-in user, or 401. While ``authenticate`` is a stub and fixtures are on, any
     bearer token is the sample user, so the route still validates its request."""
-    token = bearer_token(request)
     try:
-        return await run(services(request).account.authenticate, token)
+        return services(request).account.authenticate(token)
     except NotImplementedError:
         if not request.app.state.settings.fixtures:
             raise
         return fixtures.USER
 
 
-def _invalid(where: str, name: str, kind: str, msg: str, value: Any) -> RequestValidationError:
-    return RequestValidationError([{"type": kind, "loc": [where, name], "msg": msg, "input": value}])
+Svc = Annotated[Services, Depends(services)]
+Token = Annotated[str, Depends(bearer_token)]
+CurrentUser = Annotated[User, Depends(current_user)]
+Limit = Annotated[int, Query(ge=1, le=MAX_PAGE)]
+Offset = Annotated[int, Query(ge=0)]
 
 
-def path_uuid(value: str, name: str) -> UUID:
+def from_query[T: BaseModel](cls: type[T], values: dict[str, Any]) -> T:
+    """Query parameters validated into a DTO; its errors are 422s located in the query."""
     try:
-        return UUID(value)
-    except ValueError:
-        raise _invalid("path", name, "uuid_parsing", "Input should be a valid UUID", value) from None
-
-
-def query_uuid(value: str | None, name: str) -> UUID | None:
-    if value is None:
-        return None
-    try:
-        return UUID(value)
-    except ValueError:
-        raise _invalid("query", name, "uuid_parsing", "Input should be a valid UUID", value) from None
-
-
-def paging(limit: int, offset: int, max_limit: int = MAX_PAGE) -> tuple[int, int]:
-    if not 1 <= limit <= max_limit:
-        raise _invalid("query", "limit", "less_than_equal", f"limit must be between 1 and {max_limit}", limit)
-    if offset < 0:
-        raise _invalid("query", "offset", "greater_than_equal", "offset must not be negative", offset)
-    return limit, offset
-
-
-def choice(value: str, name: str, allowed: tuple[str, ...]) -> str:
-    if value not in allowed:
-        raise _invalid("query", name, "literal_error", "Input should be " + " or ".join(map(repr, allowed)), value)
-    return value
+        return cls.model_validate(values)
+    except ValidationError as exc:
+        raise RequestValidationError(
+            [{**e, "loc": ("query", *e["loc"])} for e in exc.errors(include_url=False)]) from None

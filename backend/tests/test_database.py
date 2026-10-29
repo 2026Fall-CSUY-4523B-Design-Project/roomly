@@ -1,12 +1,10 @@
 """Postgres-first with SQLite fallback: which engine Roomly runs on, and when."""
 
-import asyncio
-import json
 from pathlib import Path
 
 import psycopg
 import pytest
-from fastapi_reborn.http.requests import Request
+from fastapi.testclient import TestClient
 
 from roomly.config import Settings
 from roomly.db import Database
@@ -59,7 +57,6 @@ def test_health_reports_the_engine_in_use(tmp_path: Path) -> None:
     app = create_app(Settings.from_env({}), db)
     db.open()
     try:
-        resp = asyncio.run(app.handle(Request("GET", "/health")))
-        assert json.loads(resp.body) == {"status": "ok", "database": "sqlite"}
+        assert TestClient(app).get("/health").json() == {"status": "ok", "database": "sqlite"}
     finally:
         db.close()

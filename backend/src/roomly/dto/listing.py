@@ -6,46 +6,47 @@ are, so the client labels them "Unknown" instead of guessing.
 
 import datetime as dt
 import re
-from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from roomly.dto.base import rule
+from pydantic import Field, StrictFloat, StrictInt, StringConstraints
+
+from roomly.dto.base import DTO
 from roomly.entity import DataReport, Listing
 
 Borough = Literal["manhattan", "brooklyn", "queens", "bronx", "staten_island"]
 Availability = Literal["available", "unavailable", "unknown"]
 ReportReason = Literal["wrong_merge", "wrong_value", "unavailable", "other"]
 
-ZIP_PATTERN = re.compile(r"[0-9]{5}")
-URL_PATTERN = re.compile(r"https?://\S+")
+ZIP_PATTERN = re.compile(r"^[0-9]{5}$")
+URL_PATTERN = re.compile(r"^https?://\S+$")
 MIN_LEASE_DAYS = 30  # R-2.1
 
 
-@dataclass(frozen=True)
-class ManualListingRequest:
+class ManualListingRequest(DTO):
     """A listing typed in by a signed-in user. Leave a field out when it is not known."""
 
-    address_line: str = rule(min_len=1, max_len=200)
+    address_line: str = Field(min_length=1, max_length=200)
     borough: Borough | None = None
-    unit: str | None = rule(default=None, min_len=1, max_len=20)
-    postal_code: str | None = rule(default=None, pattern=ZIP_PATTERN)
-    title: str | None = rule(default=None, min_len=1, max_len=200)
-    latitude: float | None = rule(default=None, ge=-90, le=90)
-    longitude: float | None = rule(default=None, ge=-180, le=180)
-    advertised_rent_cents: int | None = rule(default=None, ge=1, le=10_000_000)
-    net_effective_rent_cents: int | None = rule(default=None, ge=1, le=10_000_000)
-    lease_term_months: int | None = rule(default=None, ge=1, le=60)
-    broker_fee_cents: int | None = rule(default=None, ge=0, le=10_000_000)
-    monthly_fees_cents: int | None = rule(default=None, ge=0, le=1_000_000)
-    bedrooms: int | None = rule(default=None, ge=0, le=20)
-    bathrooms: float | None = rule(default=None, ge=0, le=20)
-    area_sqft: int | None = rule(default=None, ge=1, le=100_000)
+    unit: str | None = Field(default=None, min_length=1, max_length=20)
+    postal_code: str | None = Field(default=None, pattern=ZIP_PATTERN)
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    latitude: StrictFloat | None = Field(default=None, ge=-90, le=90)
+    longitude: StrictFloat | None = Field(default=None, ge=-180, le=180)
+    advertised_rent_cents: StrictInt | None = Field(default=None, ge=1, le=10_000_000)
+    net_effective_rent_cents: StrictInt | None = Field(default=None, ge=1, le=10_000_000)
+    lease_term_months: StrictInt | None = Field(default=None, ge=1, le=60)
+    broker_fee_cents: StrictInt | None = Field(default=None, ge=0, le=10_000_000)
+    monthly_fees_cents: StrictInt | None = Field(default=None, ge=0, le=1_000_000)
+    bedrooms: StrictInt | None = Field(default=None, ge=0, le=20)
+    bathrooms: StrictFloat | None = Field(default=None, ge=0, le=20)
+    area_sqft: StrictInt | None = Field(default=None, ge=1, le=100_000)
     move_in_date: dt.date | None = None
-    min_lease_days: int | None = rule(default=None, ge=1, le=3650)
-    amenities: list[str] = rule(default_factory=list, max_items=40)
+    min_lease_days: StrictInt | None = Field(default=None, ge=1, le=3650)
+    amenities: list[Annotated[str, StringConstraints(min_length=1, max_length=40)]] = Field(
+        default_factory=list, max_length=40)
     availability: Availability = "unknown"
-    original_url: str | None = rule(default=None, pattern=URL_PATTERN, max_len=2000)
+    original_url: str | None = Field(default=None, pattern=URL_PATTERN, max_length=2000)
 
     def check(self) -> list[tuple[str, str]]:
         problems = []
@@ -53,33 +54,27 @@ class ManualListingRequest:
             problems.append(("longitude", "latitude and longitude must be given together"))
         if self.net_effective_rent_cents is not None and self.lease_term_months is None:
             problems.append(("lease_term_months", "net-effective rent needs the lease term it is spread over"))
-        if any(not a.strip() or len(a) > 40 for a in self.amenities):
-            problems.append(("amenities", "amenities must be 1-40 characters each"))
         return problems
 
 
-@dataclass(frozen=True)
-class ReportRequest:
+class ReportRequest(DTO):
     reason: ReportReason
-    details: str | None = rule(default=None, min_len=1, max_len=2000)
+    details: str | None = Field(default=None, min_length=1, max_length=2000)
 
 
-@dataclass(frozen=True)
-class Coordinates:
+class Coordinates(DTO):
     latitude: float
     longitude: float
 
 
-@dataclass(frozen=True)
-class DerivedValue:
+class DerivedValue(DTO):
     """A calculated value with the formula that produced it (R-4.3). ``value`` is None when an input is Unknown."""
 
     value: int | None
     formula: str
 
 
-@dataclass(frozen=True)
-class SourceRefDTO:
+class SourceRefDTO(DTO):
     """Provenance of one source record (R-2.2)."""
 
     source_name: str
@@ -90,8 +85,7 @@ class SourceRefDTO:
     collected_at: dt.datetime
 
 
-@dataclass(frozen=True)
-class PricePointDTO:
+class PricePointDTO(DTO):
     rent_cents: int
     observed_at: dt.datetime
 
@@ -110,8 +104,7 @@ def _unknown(listing: Listing, names: tuple[str, ...]) -> list[str]:
     return out
 
 
-@dataclass(frozen=True)
-class ListingSummaryDTO:
+class ListingSummaryDTO(DTO):
     """A search result or comparison column."""
 
     id: UUID
@@ -139,7 +132,8 @@ class ListingSummaryDTO:
 
 
 def _summary_fields(listing: Listing) -> dict[str, Any]:
-    coords = None if listing.latitude is None else Coordinates(listing.latitude, listing.longitude)  # type: ignore[arg-type]
+    coords = None if listing.latitude is None else Coordinates(
+        latitude=listing.latitude, longitude=listing.longitude)  # type: ignore[arg-type]
     return {
         "id": listing.id, "title": listing.title, "address_line": listing.address_line, "unit": listing.unit,
         "borough": listing.borough, "advertised_rent_cents": listing.advertised_rent_cents,
@@ -151,7 +145,6 @@ def _summary_fields(listing: Listing) -> dict[str, Any]:
     }
 
 
-@dataclass(frozen=True)
 class ListingCardDTO(ListingSummaryDTO):
     """The full card: every value with its sources, conflicts and collection times (R-2.2)."""
 
@@ -182,8 +175,7 @@ class ListingCardDTO(ListingSummaryDTO):
         )
 
 
-@dataclass(frozen=True)
-class ReportDTO:
+class ReportDTO(DTO):
     id: UUID
     listing_id: UUID
     reason: str

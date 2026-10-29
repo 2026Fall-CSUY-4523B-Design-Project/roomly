@@ -1,11 +1,12 @@
 """DTOs for Group Management (§8.1.2.2, R-1.2, R-1.3)."""
 
 import datetime as dt
-from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID
 
-from roomly.dto.base import EMAIL_PATTERN, rule
+from pydantic import Field
+
+from roomly.dto.base import DTO, Email
 from roomly.dto.common import PersonRef
 from roomly.entity import Invitation
 
@@ -13,23 +14,19 @@ GroupRole = Literal["owner", "member"]
 InvitationState = Literal["pending", "accepted", "declined", "expired"]
 
 
-@dataclass(frozen=True)
-class CreateGroupRequest:
-    name: str = rule(min_len=1, max_len=80)
+class CreateGroupRequest(DTO):
+    name: str = Field(min_length=1, max_length=80)
 
 
-@dataclass(frozen=True)
-class InviteRequest:
-    email: str = rule(pattern=EMAIL_PATTERN, lower=True, max_len=254)
+class InviteRequest(DTO):
+    email: Email
 
 
-@dataclass(frozen=True)
-class TransferOwnershipRequest:
+class TransferOwnershipRequest(DTO):
     user_id: UUID
 
 
-@dataclass(frozen=True)
-class GroupSummaryDTO:
+class GroupSummaryDTO(DTO):
     id: UUID
     name: str
     role: str
@@ -37,15 +34,13 @@ class GroupSummaryDTO:
     created_at: dt.datetime
 
 
-@dataclass(frozen=True)
-class MemberDTO:
+class MemberDTO(DTO):
     user: PersonRef
     role: str
     joined_at: dt.datetime
 
 
-@dataclass(frozen=True)
-class GroupDetailDTO:
+class GroupDetailDTO(DTO):
     id: UUID
     name: str
     created_at: dt.datetime
@@ -53,8 +48,7 @@ class GroupDetailDTO:
     members: list[MemberDTO]
 
 
-@dataclass(frozen=True)
-class InvitationDTO:
+class InvitationDTO(DTO):
     """An invitation as the group sees it."""
 
     id: UUID
@@ -72,8 +66,7 @@ class InvitationDTO:
                    created_at=inv.created_at, expires_at=inv.expires_at, responded_at=inv.responded_at)
 
 
-@dataclass(frozen=True)
-class IncomingInvitationDTO:
+class IncomingInvitationDTO(DTO):
     """A pending invitation as the invitee sees it."""
 
     id: UUID

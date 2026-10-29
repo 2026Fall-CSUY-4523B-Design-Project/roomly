@@ -1,3 +1,0 @@
-[submodule "packages/fastapi-reborn"]
-	path = packages/fastapi-reborn
-	url = git@github.com:2026Fall-CSUY-4523B-Design-Project/fastapi-reborn.git

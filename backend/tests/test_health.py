@@ -1,12 +1,9 @@
-import asyncio
-import json
-
-from fastapi_reborn.http.requests import Request
+from fastapi.testclient import TestClient
 
 from roomly.main import app
 
 
 def test_health() -> None:
-    resp = asyncio.run(app.handle(Request("GET", "/health")))
+    resp = TestClient(app).get("/health")
     assert resp.status_code == 200
-    assert json.loads(resp.body)["status"] == "ok"
+    assert resp.json()["status"] == "ok"

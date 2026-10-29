@@ -1,11 +1,12 @@
 """DTOs for Search and Ranking (§8.1.2.5, R-3.1, R-3.2) and the user's saved inputs."""
 
 import datetime as dt
-from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from roomly.dto.base import rule
+from pydantic import Field, StrictBool, StrictFloat, StrictInt
+
+from roomly.dto.base import DTO, Distinct
 from roomly.dto.listing import Borough
 from roomly.entity import CommuteDestination, SavedSearch
 
@@ -13,25 +14,24 @@ SortOrder = Literal["newest", "rent_asc", "rent_desc"]
 TravelMode = Literal["transit", "walk", "bike", "drive"]
 
 
-@dataclass(frozen=True)
-class SearchCriteria:
+class SearchCriteria(DTO):
     """Hard constraints. A listing whose value is Unknown fails any active constraint on it."""
 
-    min_rent_cents: int | None = rule(default=None, ge=0)
-    max_rent_cents: int | None = rule(default=None, ge=0)
-    boroughs: list[Borough] = rule(default_factory=list, unique=True)
-    min_bedrooms: int | None = rule(default=None, ge=0, le=20)
-    max_bedrooms: int | None = rule(default=None, ge=0, le=20)
-    min_area_sqft: int | None = rule(default=None, ge=1)
+    min_rent_cents: StrictInt | None = Field(default=None, ge=0)
+    max_rent_cents: StrictInt | None = Field(default=None, ge=0)
+    boroughs: Annotated[list[Borough], Distinct] = Field(default_factory=list)
+    min_bedrooms: StrictInt | None = Field(default=None, ge=0, le=20)
+    max_bedrooms: StrictInt | None = Field(default=None, ge=0, le=20)
+    min_area_sqft: StrictInt | None = Field(default=None, ge=1)
     move_in_from: dt.date | None = None
     move_in_to: dt.date | None = None
-    amenities: list[str] = rule(default_factory=list, max_items=20, unique=True)
-    no_broker_fee: bool = False
+    amenities: Annotated[list[str], Distinct] = Field(default_factory=list, max_length=20)
+    no_broker_fee: StrictBool = False
     # map viewport: give all four or none
-    south: float | None = rule(default=None, ge=-90, le=90)
-    west: float | None = rule(default=None, ge=-180, le=180)
-    north: float | None = rule(default=None, ge=-90, le=90)
-    east: float | None = rule(default=None, ge=-180, le=180)
+    south: StrictFloat | None = Field(default=None, ge=-90, le=90)
+    west: StrictFloat | None = Field(default=None, ge=-180, le=180)
+    north: StrictFloat | None = Field(default=None, ge=-90, le=90)
+    east: StrictFloat | None = Field(default=None, ge=-180, le=180)
 
     def check(self) -> list[tuple[str, str]]:
         problems = []
@@ -46,16 +46,14 @@ class SearchCriteria:
         return problems
 
 
-@dataclass(frozen=True)
-class SavedSearchRequest:
-    name: str = rule(min_len=1, max_len=80)
-    criteria: SearchCriteria = field(default_factory=SearchCriteria)
-    weights: dict[str, float] = field(default_factory=dict)   # used by ranking (Sprint 4)
-    alerts_enabled: bool = True
+class SavedSearchRequest(DTO):
+    name: str = Field(min_length=1, max_length=80)
+    criteria: SearchCriteria = Field(default_factory=SearchCriteria)
+    weights: dict[str, StrictFloat] = Field(default_factory=dict)   # used by ranking (Sprint 4)
+    alerts_enabled: StrictBool = True
 
 
-@dataclass(frozen=True)
-class SavedSearchDTO:
+class SavedSearchDTO(DTO):
     id: UUID
     name: str
     criteria: dict[str, Any]
@@ -70,12 +68,11 @@ class SavedSearchDTO:
                    created_at=s.created_at, updated_at=s.updated_at)
 
 
-@dataclass(frozen=True)
-class CommuteDestinationRequest:
-    label: str = rule(min_len=1, max_len=60)
-    address: str | None = rule(default=None, min_len=1, max_len=200)
-    latitude: float | None = rule(default=None, ge=-90, le=90)
-    longitude: float | None = rule(default=None, ge=-180, le=180)
+class CommuteDestinationRequest(DTO):
+    label: str = Field(min_length=1, max_length=60)
+    address: str | None = Field(default=None, min_length=1, max_length=200)
+    latitude: StrictFloat | None = Field(default=None, ge=-90, le=90)
+    longitude: StrictFloat | None = Field(default=None, ge=-180, le=180)
     mode: TravelMode = "transit"
 
     def check(self) -> list[tuple[str, str]]:
@@ -86,8 +83,7 @@ class CommuteDestinationRequest:
         return []
 
 
-@dataclass(frozen=True)
-class CommuteDestinationDTO:
+class CommuteDestinationDTO(DTO):
     id: UUID
     label: str
     address: str | None

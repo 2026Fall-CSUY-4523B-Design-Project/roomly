@@ -21,16 +21,7 @@ jobs:
     env:
       ROOMLY_TEST_DATABASE_URL: postgresql://roomly@127.0.0.1:5433/roomly_test
     steps:
-      # fastapi-reborn is private: a read-only deploy key on that repo (private half in the
-      # SUBMODULE_SSH_KEY secret) lets the submodule checkout clone it over SSH.
-      - uses: webfactory/ssh-agent@v0.10.0
-        with:
-          ssh-private-key: ${{ secrets.SUBMODULE_SSH_KEY }}
-      # checkout rewrites git@github.com: to https for submodules, so init them by hand.
       - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - run: git submodule update --init --recursive
       - uses: astral-sh/setup-uv@v10.3.2
         with:
           python-version: "3.14"

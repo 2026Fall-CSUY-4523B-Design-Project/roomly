@@ -1,14 +1,14 @@
 """Response pieces shared by several domains."""
 
-from dataclasses import dataclass
 from uuid import UUID
+
+from roomly.dto.base import DTO
 
 DELETED_USER = "Deleted user"   # R-1.4: shared content of a deleted account
 UNNAMED_MEMBER = "Member"
 
 
-@dataclass(frozen=True)
-class PersonRef:
+class PersonRef(DTO):
     """Who wrote, saved or owns something. A deleted account keeps its id but shows no name."""
 
     id: UUID | None
@@ -22,8 +22,7 @@ class PersonRef:
         return cls(id=user_id, name=display_name or UNNAMED_MEMBER, deleted=False)
 
 
-@dataclass(frozen=True)
-class Page[T]:
+class Page[T](DTO):
     """One page of results plus the total count, for list endpoints."""
 
     items: list[T]

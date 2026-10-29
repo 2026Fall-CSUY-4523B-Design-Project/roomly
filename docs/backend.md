@@ -1,6 +1,6 @@
 # Backend
 
-The Roomly API: Python 3.14 on [fastapi-reborn](https://github.com/2026Fall-CSUY-4523B-Design-Project/fastapi-reborn) (stdlib only, no pydantic), with PostgreSQL as the primary database and SQLite as the fallback. It declares the API of the eight use cases of SSDS-001 v2.0 §8.1.2: 56 endpoints plus `/health`.
+The Roomly API: Python 3.14 on [FastAPI](https://fastapi.tiangolo.com/) (pydantic DTOs, served by uvicorn), with PostgreSQL as the primary database and SQLite as the fallback. It declares the API of the eight use cases of SSDS-001 v2.0 §8.1.2: 56 endpoints plus `/health`.
 
 What exists: the schema and migrations, the database layer (with the fallback), DTOs, controllers, SQL mappers and entities. The service methods behind the controllers are **stubs**: each one raises `NotImplementedError`, which the API answers with `501 {"detail": "not implemented yet"}`. DTO validation (422) and the bearer-token check (401) already run before a stub is reached. In dev, stubs answer with sample data instead; see [Fixtures](#fixtures).
 
@@ -10,26 +10,27 @@ script/backend.sh test      # pytest: DTO validation and DDL invariants (on Post
 script/backend.sh migrate   # apply migrations to the configured database (or its fallback)
 ```
 
-`GET /openapi.json` (also served at `/docs`) returns the OpenAPI document, with request and response schemas generated from the DTOs.
+`GET /openapi.json` returns the OpenAPI document, with request and response schemas generated from the DTOs; `/docs` (Swagger UI) and `/redoc` render it.
 
 ## Layers
 
 ```
 HTTP ─▶ controller ─▶ service ─▶ mapper ─▶ Tx ─▶ PostgreSQL  (or the SQLite fallback)
-        parse DTOs     rules,      SQL        one
+        typed params,  rules,      SQL        one
+        DTOs, Depends
         map errors     transactions           transaction
 ```
 
 | Package | Role | SSDS |
 | --- | --- | --- |
-| `roomly.controller` | One `APIRouter` per use case. Parses path, query and body into DTOs, resolves the bearer session, calls one service method, and returns a DTO. It holds no business rules. | boundary classes |
+| `roomly.controller` | One `APIRouter` per use case. Endpoints declare typed path and query parameters and a request DTO, which FastAPI validates; `Depends` resolves the services (`Svc`) and the bearer session (`CurrentUser`). Each endpoint calls one service method and returns a DTO, its declared response model. It holds no business rules. | boundary classes |
 | `roomly.service` | One class per use case, with the method signatures the controllers call; docstrings note the SSDS rule where one applies. Every method is a stub (`raise NotImplementedError`). Implementations open a transaction (`self.db.transaction()`), use the mappers, and raise `ServiceError` subclasses (`NotFound`, `Forbidden`, `Conflict`, ...), which the controller layer maps to HTTP statuses. | control classes §9.1 |
 | `roomly.mapper` | Hand-written SQL, MyBatis style: one mapper per aggregate, and every statement visible in one place. Rows come back as entities. | — |
 | `roomly.entity` | One frozen dataclass per table; field names equal column names. | entity classes §9.1 |
-| `roomly.dto` | Frozen dataclasses for request and response bodies. Each field declares its constraints with `rule(...)` (length, range, pattern, unique items, lower-casing); `check()` holds cross-field rules. `parse()` returns FastAPI-style 422 errors. | — |
+| `roomly.dto` | Frozen pydantic models (`dto.base.DTO`) for request and response bodies. Fields declare constraints with `Field(...)` and `StringConstraints` (length, range, pattern); `Email`, `Secret` (not stripped) and `Distinct` (unique items) are shared. Request numbers and booleans are strict (`StrictInt`, `StrictFloat`, `StrictBool`). `check()` holds cross-field rules and reports each problem at its field. | — |
 | `roomly.db` | `Database` (primary/fallback selection, migrations) and the engine-neutral `Tx`. | — |
 
-Controllers are async; `controller.base.run` moves each blocking service call onto a worker thread (`asyncio.to_thread`). Services are synchronous and use psycopg 3 with a connection pool, or `sqlite3` with one connection per transaction.
+Endpoints and the `current_user` dependency are plain `def`, so FastAPI runs them in its thread pool and the blocking database calls stay off the event loop. Services are synchronous and use psycopg 3 with a connection pool, or `sqlite3` with one connection per transaction.
 
 ## Errors
 
@@ -39,7 +40,7 @@ Controllers are async; `controller.base.run` moves each blocking service call on
 | 403 | `{"detail": "..."}` | signed in, but not allowed (not a member, not the owner, not an administrator) |
 | 404 | `{"detail": "..."}` | not found; also an invitation addressed to someone else, so its existence is never confirmed |
 | 409 | `{"detail": "...", "constraint": "name"}` | a rule conflict from a service, or a database invariant that caught a race |
-| 422 | `{"detail": [{"loc": ["body", "email"], "msg": "...", "type": "...", "input": ...}]}` | DTO validation |
+| 422 | `{"detail": [{"loc": ["body", "email"], "msg": "...", "type": "...", "input": ...}]}` | validation of the body, path (`["path", "group_id"]`) or query (`["query", "limit"]`), all problems at once |
 | 501 | `{"detail": "not implemented yet"}` | the service method is still a stub and fixtures are off |
 | 503 | `{"detail": "the database is unavailable, try again shortly"}` | the database dropped while serving |
 
@@ -208,7 +209,7 @@ The intended behavior of each endpoint, from the SSDS. Today every one of them a
 | §8.1.2.7 Group Discussion | `room_controller` | `RoomService` | `room_mapper` | `dto/room` |
 | §8.1.2.8 Notifications | `notification_controller` | `NotificationService` | `notification_mapper` | `dto/notification` |
 
-Tests: `test_dto` (validation rules), `test_schema` (DDL invariants on both engines), `test_database` (primary/fallback selection), `test_config`, `test_health`.
+Tests: `test_dto` (validation rules, 422 locations, the OpenAPI document), `test_fixtures` (a sample for every route, served through FastAPI), `test_schema` (DDL invariants on both engines), `test_database` (primary/fallback selection), `test_config`, `test_health`. HTTP-level tests use FastAPI's `TestClient`.
 
 ## To do
 

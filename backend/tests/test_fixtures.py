@@ -1,51 +1,31 @@
 """Fixture mode: stub service methods answer with roomly.fixtures samples instead of 501."""
 
-import asyncio
-import dataclasses
-import json
 import typing
 from typing import Any
 
 import pytest
-from fastapi_reborn import FastAPI
-from fastapi_reborn.http.requests import Request
-from fastapi_reborn.routing import Route
+from fastapi import FastAPI
+from fastapi.routing import APIRoute
+from fastapi.testclient import TestClient
 
 from roomly import fixtures
 from roomly.config import Settings
+from roomly.controller import ROUTERS
 from roomly.dto.common import Page
 from roomly.main import create_app
 
 pytestmark = pytest.mark.unit
 
-NOT_STUBBED = {"/openapi.json", "/docs", "/health"}
-
 
 def call(app: FastAPI, method: str, path: str, body: Any = None, token: str | None = "any-token",
          query: str = "") -> tuple[int, Any, dict[str, str]]:
-    headers = [("host", "test")]
-    raw = b""
-    if body is not None:
-        raw = json.dumps(body).encode()
-        headers += [("content-type", "application/json"), ("content-length", str(len(raw)))]
-    if token:
-        headers.append(("authorization", f"Bearer {token}"))
-    r = asyncio.run(app.handle(Request(method, path, query_string=query, headers=headers, body=raw)))
-    return r.status_code, json.loads(r.body) if r.body else None, {k.lower(): v for k, v in r.headers.items()}
+    headers = {"authorization": f"Bearer {token}"} if token else {}
+    r = TestClient(app).request(method, f"{path}?{query}" if query else path, json=body, headers=headers)
+    return r.status_code, r.json() if r.content else None, dict(r.headers)
 
 
-def routes(app: FastAPI) -> list[Route]:
-    found: list[Route] = []
-
-    def walk(router: Any) -> None:
-        for r in getattr(router, "routes", []):
-            if isinstance(r, Route):
-                found.append(r)
-            else:
-                walk(r)
-
-    walk(app.router)
-    return [r for r in found if r.path not in NOT_STUBBED]
+def routes() -> list[APIRoute]:
+    return [r for router in ROUTERS for r in router.routes if isinstance(r, APIRoute)]
 
 
 def matches(value: Any, tp: Any) -> bool:
@@ -55,9 +35,7 @@ def matches(value: Any, tp: Any) -> bool:
         return isinstance(value, list) and all(matches(v, args[0]) for v in value)
     if origin is dict:
         return isinstance(value, dict)
-    if origin is not None and dataclasses.is_dataclass(origin):   # Page[ListingSummaryDTO]
-        return isinstance(value, origin) and all(matches(v, args[0]) for v in value.items)
-    return isinstance(value, tp)
+    return isinstance(value, tp)   # Page[ListingSummaryDTO] is a class of its own
 
 
 @pytest.fixture(scope="module")
@@ -65,8 +43,9 @@ def app() -> FastAPI:
     return create_app(Settings.from_env({}))   # dev: fixtures on
 
 
-def test_every_route_with_a_body_has_a_sample_of_its_declared_type(app: FastAPI) -> None:
-    for route in routes(app):
+def test_every_route_with_a_body_has_a_sample_of_its_declared_type() -> None:
+    assert sum(len(r.methods) for r in routes()) == 56
+    for route in routes():
         for method in route.methods:
             key = f"{method} {route.path}"
             ret = typing.get_type_hints(route.endpoint)["return"]
@@ -93,6 +72,18 @@ def test_samples_are_served_with_the_route_status_and_marked(app: FastAPI) -> No
     status, page, _ = call(app, "GET", "/search", token=None, query="borough=brooklyn&borough=queens")
     assert status == 200 and page["total"] == len(page["items"]) == 3
     assert page["items"][1]["unknown"] == ["bathrooms", "area_sqft", "move_in_date"]
+
+
+def test_every_get_route_serves_its_sample(app: FastAPI) -> None:
+    """Covers routers with a prefix (/admin) and generic responses (Page[...])."""
+    for route in routes():
+        if "GET" not in route.methods:
+            continue
+        path = route.path_format
+        for name in route.param_convertors:
+            path = path.replace("{" + name + "}", str(fixtures.CREW))
+        status, body, headers = call(app, "GET", path)
+        assert (status, headers.get("x-roomly-fixture")) == (200, "1"), f"{route.path}: {status} {body}"
 
 
 def test_requests_are_still_validated_and_authenticated(app: FastAPI) -> None:
