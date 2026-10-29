@@ -3,6 +3,7 @@
 #   dist/roomly-<v>-py3-none-any.whl                  backend
 #   dist/fastapi_reborn-<v>-py3-none-any.whl         submodule library
 #   dist/roomly-frontend-<v>.tar.gz                   Next.js build (.next + package files)
+#   dist/roomly-db-<v>.tar.gz                         db/migrations (point ROOMLY_MIGRATIONS_DIR at it)
 # On the target host: install both wheels with uv, then in the unpacked frontend
 # run `pnpm install --prod && pnpm start`.
 set -euo pipefail
@@ -23,6 +24,9 @@ NODE_ENV=production pnpm build
 tar -czf "$DIST/roomly-frontend-$VERSION.tar.gz" \
   .next package.json pnpm-lock.yaml next.config.js .npmrc \
   $([ -d public ] && echo public)
+
+echo "== database migrations"
+tar -czf "$DIST/roomly-db-$VERSION.tar.gz" -C "$ROOT/db" migrations
 
 echo "== artifacts"
 ls -lh "$DIST"

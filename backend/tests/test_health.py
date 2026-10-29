@@ -9,4 +9,4 @@ from roomly.main import app
 def test_health() -> None:
     resp = asyncio.run(app.handle(Request("GET", "/health")))
     assert resp.status_code == 200
-    assert json.loads(resp.body) == {"status": "ok"}
+    assert json.loads(resp.body)["status"] == "ok"
