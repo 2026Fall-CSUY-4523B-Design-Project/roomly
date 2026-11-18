@@ -1,7 +1,16 @@
 import Link from "next/link";
+import { useState } from "react";
 
-// Top navigation. Routes other than / are planned (SSDS §16.6.1 WebClient) and not built yet.
+import { useAuth } from "@/lib/auth";
+
+// Search and account routes are implemented; collaboration routes are planned.
 export default function Header() {
+  const { user, loading, error, signOut } = useAuth();
+  const [pending, setPending] = useState(false);
+  async function leave() {
+    setPending(true);
+    try { await signOut(); } finally { setPending(false); }
+  }
   return (
     <header className="header">
       <Link href="/">
@@ -20,9 +29,11 @@ export default function Header() {
         <Link href="/notifications">
           <a>Notifications</a>
         </Link>
-        <Link href="/sign-in">
-          <a className="button">Sign in</a>
-        </Link>
+        {loading ? <span role="status">Checking session…</span> : user ? <>
+          <span>{user.display_name || user.email}</span>
+          <button className="button secondary" onClick={leave} disabled={pending}>{pending ? "Signing out…" : "Sign out"}</button>
+        </> : <Link href="/sign-in"><a className="button">Sign in</a></Link>}
+        {error && <span className="error" role="alert">{error}</span>}
       </nav>
     </header>
   );

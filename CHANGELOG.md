@@ -4,6 +4,16 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
+### Added
+- Real sign-up, sign-in, current-account lookup, and sign-out with salted scrypt passwords,
+  seven-day bearer sessions, hashed tokens, and immediate session revocation.
+- Browser sign-up/sign-in forms, per-tab session restoration, expiry handling, and account navigation.
+- HTTP authentication tests on PostgreSQL and SQLite, including concurrent duplicate sign-ups.
+
+### Changed
+- Protected fixture routes now require real authentication; arbitrary bearer tokens are rejected.
+  Unit tests for unfinished routes explicitly isolate authentication.
+
 ## [2.1.0] - 2026-10-29
 
 First release, matching SSDS-001 v2.1.
