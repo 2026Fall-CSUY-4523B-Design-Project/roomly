@@ -13,7 +13,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ValidationError
 
-from roomly import fixtures
 from roomly.entity import User
 from roomly.service import Services
 
@@ -31,14 +30,8 @@ def bearer_token(credentials: Annotated[HTTPAuthorizationCredentials, Depends(_b
 
 
 def current_user(request: Request, token: Annotated[str, Depends(bearer_token)]) -> User:
-    """The signed-in user, or 401. While ``authenticate`` is a stub and fixtures are on, any
-    bearer token is the sample user, so the route still validates its request."""
-    try:
-        return services(request).account.authenticate(token)
-    except NotImplementedError:
-        if not request.app.state.settings.fixtures:
-            raise
-        return fixtures.USER
+    """Resolve a real session, including in development fixture mode."""
+    return services(request).account.authenticate(token)
 
 
 Svc = Annotated[Services, Depends(services)]

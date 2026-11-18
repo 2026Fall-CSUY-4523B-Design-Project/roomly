@@ -97,7 +97,11 @@ def test_schema_mirrors_the_dto() -> None:
 
 
 def test_http_422_locates_errors_in_body_path_and_query() -> None:
-    client = TestClient(create_app(Settings.from_env({})))
+    from roomly import fixtures
+
+    app = create_app(Settings.from_env({}))
+    app.state.services.account.authenticate = lambda token: fixtures.USER
+    client = TestClient(app)
     auth = {"authorization": "Bearer any-token"}
     detail = client.post("/listings", json={"address_line": "1 A St", "bedrooms": True}, headers=auth).json()["detail"]
     assert [(e["type"], e["loc"]) for e in detail] == [("int_type", ["body", "bedrooms"])]

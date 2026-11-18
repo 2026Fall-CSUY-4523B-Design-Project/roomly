@@ -12,7 +12,7 @@ Roomly is a mono repo that contains multiple packages and applications related t
 backend/
   src/roomly/
     controller/   HTTP routers, one per SSDS use case (§8.1.2.1–8)
-    service/      SSDS control classes: method stubs (NotImplementedError -> HTTP 501)
+    service/      account authentication; remaining methods are stubs (HTTP 501)
     mapper/       hand-written SQL, one mapper per aggregate
     entity/       one dataclass per table
     dto/          request/response bodies: pydantic models with validation rules
@@ -44,9 +44,9 @@ script/run.sh        # = script/run.sh --dev
 
 `script/run.sh --prod` builds and starts the backend and frontend against an external database; `DATABASE_URL` must be set.
 
-The backend applies pending migrations when it starts. API docs: <http://127.0.0.1:8000/docs> (Swagger UI), `/redoc`, `/openapi.json`. All 56 endpoints are declared with their DTOs; the service methods behind them are stubs (see [docs/backend.md](docs/backend.md#to-do)).
+The backend applies pending migrations when it starts. API docs: <http://127.0.0.1:8000/docs> (Swagger UI), `/redoc`, `/openapi.json`. All 56 endpoints are declared with their DTOs. Sign-up, sign-in, sign-out and `/me` are implemented; remaining service methods are stubs (see [docs/backend.md](docs/backend.md#to-do)).
 
-**Fixtures for frontend work.** In dev, a stub answers with a sample response from `backend/src/roomly/fixtures.py` instead of 501. The response has the route's real status code and an `X-Roomly-Fixture: 1` header. Request validation (422) and the bearer check (401: send any token) still apply, so the frontend can be built against the real API shape before the logic exists. Methods that get implemented return real data automatically. `ROOMLY_FIXTURES=off` turns this off; it is off by default in prod.
+**Fixtures for frontend work.** In dev, a stub answers with a sample response from `backend/src/roomly/fixtures.py` instead of 501. The response has the route's real status code and an `X-Roomly-Fixture: 1` header. Request validation (422) and real session authentication (401) still apply, so the frontend can be built against the real API shape before the logic exists. Sign up or sign in to obtain a real token for protected routes. Fixture responses for unfinished routes remain fixed sample data, independent of the signed-in account. Methods that get implemented return real data automatically. `ROOMLY_FIXTURES=off` turns this off; it is off by default in prod.
 
 ## Database: PostgreSQL primary, SQLite fallback
 - At startup the backend connects to `DATABASE_URL` (PostgreSQL).
@@ -105,3 +105,17 @@ The Postgres runs use a throwaway `roomly_test` database (`ROOMLY_TEST_DATABASE_
 
 ## Useful links
 - [Roomly SSDS](https://docs.google.com/document/d/1Dh9CcZlhd7KVQ4CXoJAdhSbQfYPbDyGvlC8uDVS-4Y0)
+
+## Account authentication
+
+Open `/sign-up` to create an account or `/sign-in` to sign in. The header shows the current
+account and a sign-out button. Passwords are hashed with salted scrypt (N=32768, r=8, p=3);
+only SHA-256 hashes of random bearer tokens are stored in the database. Sessions expire after
+seven days, and sign-out revokes the current session immediately. Other sessions stay active.
+The browser stores the token in per-tab `sessionStorage`, restores it through `GET /me` on
+reload, and clears it on expiry or successful sign-out. Closing the tab clears browser storage;
+it does not revoke the server session. Authentication requires real accounts even with fixtures on.
+Account deletion and group management remain separate, unfinished slices.
+
+Authentication tests in `backend/tests/test_auth.py` exercise the HTTP API against both engines,
+including invalid credentials, expiry, revocation, persistence, and concurrent duplicate sign-ups.

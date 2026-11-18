@@ -2,7 +2,7 @@
 
 The Roomly API: Python 3.14 on [FastAPI](https://fastapi.tiangolo.com/) (pydantic DTOs, served by uvicorn), with PostgreSQL as the primary database and SQLite as the fallback. It declares the API of the eight use cases of SSDS-001 v2.1 §8.1.2: 56 endpoints plus `/health`.
 
-What exists: the schema and migrations, the database layer (with the fallback), DTOs, controllers, SQL mappers and entities. The service methods behind the controllers are **stubs**: each one raises `NotImplementedError`, which the API answers with `501 {"detail": "not implemented yet"}`. DTO validation (422) and the bearer-token check (401) already run before a stub is reached. In dev, stubs answer with sample data instead; see [Fixtures](#fixtures).
+What exists: the schema and migrations, the database layer (with the fallback), DTOs, controllers, SQL mappers and entities. Account sign-up, sign-in, sign-out, authentication and `GET /me` are implemented. The remaining service methods are **stubs**: each raises `NotImplementedError`, which the API answers with `501 {"detail": "not implemented yet"}`. DTO validation (422) and real session authentication (401) already run before a stub is reached. In dev, stubs answer with sample data instead; see [Fixtures](#fixtures).
 
 ```sh
 script/backend.sh dev       # serve on 127.0.0.1:8000, applying pending migrations first
@@ -24,7 +24,7 @@ HTTP ─▶ controller ─▶ service ─▶ mapper ─▶ Tx ─▶ PostgreSQL 
 | Package | Role | SSDS |
 | --- | --- | --- |
 | `roomly.controller` | One `APIRouter` per use case. Endpoints declare typed path and query parameters and a request DTO, which FastAPI validates; `Depends` resolves the services (`Svc`) and the bearer session (`CurrentUser`). Each endpoint calls one service method and returns a DTO, its declared response model. It holds no business rules. | boundary classes |
-| `roomly.service` | One class per use case, with the method signatures the controllers call; docstrings note the SSDS rule where one applies. Every method is a stub (`raise NotImplementedError`). Implementations open a transaction (`self.db.transaction()`), use the mappers, and raise `ServiceError` subclasses (`NotFound`, `Forbidden`, `Conflict`, ...), which the controller layer maps to HTTP statuses. | control classes §9.1 |
+| `roomly.service` | One class per use case, with the method signatures the controllers call; docstrings note the SSDS rule where one applies. Account authentication is implemented; other methods are stubs (`raise NotImplementedError`). Implementations open a transaction (`self.db.transaction()`), use the mappers, and raise `ServiceError` subclasses (`NotFound`, `Forbidden`, `Conflict`, ...), which the controller layer maps to HTTP statuses. | control classes §9.1 |
 | `roomly.mapper` | Hand-written SQL, MyBatis style: one mapper per aggregate, and every statement visible in one place. Rows come back as entities. | — |
 | `roomly.entity` | One frozen dataclass per table; field names equal column names. | entity classes §9.1 |
 | `roomly.dto` | Frozen pydantic models (`dto.base.DTO`) for request and response bodies. Fields declare constraints with `Field(...)` and `StringConstraints` (length, range, pattern); `Email`, `Secret` (not stripped) and `Distinct` (unique items) are shared. Request numbers and booleans are strict (`StrictInt`, `StrictFloat`, `StrictBool`). `check()` holds cross-field rules and reports each problem at its field. | — |
@@ -36,7 +36,7 @@ Endpoints and the `current_user` dependency are plain `def`, so FastAPI runs the
 
 | Status | Body | When |
 | --- | --- | --- |
-| 401 | `{"detail": "..."}` plus `WWW-Authenticate: Bearer` | no bearer token (checked today); an expired or revoked session (once `AccountService.authenticate` is implemented) |
+| 401 | `{"detail": "..."}` plus `WWW-Authenticate: Bearer` | missing, invalid, expired or revoked bearer token |
 | 403 | `{"detail": "..."}` | signed in, but not allowed (not a member, not the owner, not an administrator) |
 | 404 | `{"detail": "..."}` | not found; also an invitation addressed to someone else, so its existence is never confirmed |
 | 409 | `{"detail": "...", "constraint": "name"}` | a rule conflict from a service, or a database invariant that caught a race |
@@ -49,7 +49,7 @@ Endpoints and the `current_user` dependency are plain `def`, so FastAPI runs the
 `backend/src/roomly/fixtures.py` holds one sample response per route, keyed by `"METHOD /route/template"`. When a service stub raises `NotImplementedError` and `ROOMLY_FIXTURES` is on (the default in dev; off in prod), the error handler answers with that route's sample:
 
 - the response uses the route's normal status code (201 for creates, 204 with no body for deletes) and carries `X-Roomly-Fixture: 1`;
-- while `AccountService.authenticate` is a stub, any bearer token resolves to the sample user (Maya), so a route still validates its path, query and body first (422) and still rejects a missing token (401);
+- authentication always resolves a real persisted account; arbitrary tokens fail with 401, even in fixture mode;
 - path ids and request bodies do not change the sample: every call to a route returns the same data;
 - once a service method is implemented it returns real data, while the routes still on stubs keep returning samples.
 
@@ -126,7 +126,7 @@ The database enforces these rules itself, so they hold whatever a service does o
 
 ## Endpoints
 
-The intended behavior of each endpoint, from the SSDS. Today every one of them answers 501 once its request has passed DTO validation and, where required, the bearer check. "Guest" means no token is needed; every other route takes `Authorization: Bearer <token>` from sign-up or sign-in.
+The intended behavior of each endpoint, from the SSDS. Account authentication endpoints return real data. Unimplemented endpoints answer 501 with fixtures off after validation and authentication. "Guest" means no token is needed; every other route takes `Authorization: Bearer <token>` from sign-up or sign-in.
 
 ### Login (§8.1.2.1)
 | | |
@@ -198,7 +198,7 @@ The intended behavior of each endpoint, from the SSDS. Today every one of them a
 
 ## Traceability
 
-| Use case | Controller | Service (stub) | Mapper | DTOs |
+| Use case | Controller | Service | Mapper | DTOs |
 | --- | --- | --- | --- | --- |
 | §8.1.2.1 Login | `account_controller` | `AccountService` | `account_mapper` | `dto/account` |
 | §8.1.2.2 Group Management | `group_controller` | `GroupService` | `group_mapper` | `dto/group` |
@@ -209,10 +209,10 @@ The intended behavior of each endpoint, from the SSDS. Today every one of them a
 | §8.1.2.7 Group Discussion | `room_controller` | `RoomService` | `room_mapper` | `dto/room` |
 | §8.1.2.8 Notifications | `notification_controller` | `NotificationService` | `notification_mapper` | `dto/notification` |
 
-Tests: `test_dto` (validation rules, 422 locations, the OpenAPI document), `test_fixtures` (a sample for every route, served through FastAPI), `test_schema` (DDL invariants on both engines), `test_database` (primary/fallback selection), `test_config`, `test_health`. HTTP-level tests use FastAPI's `TestClient`.
+Tests: `test_auth` (real HTTP account lifecycle and sessions on both engines), `test_dto` (validation rules, 422 locations, the OpenAPI document), `test_fixtures` (a sample for every route, served through FastAPI), `test_schema` (DDL invariants on both engines), `test_database` (primary/fallback selection), `test_config`, `test_health`. HTTP-level tests use FastAPI's `TestClient`.
 
 ## To do
 
-- Every method in `roomly/service/` (all eight use cases), including sign-in itself: password hashing and bearer sessions (`AccountService.authenticate`), and access checks such as "members only" and "owner only".
+- Remaining service methods, including account deletion, group membership, and access checks such as "members only" and "owner only". Account authentication is implemented.
 - Pieces the SSDS plans that have no stub yet: the SampleFeed collector job, ranking with explained scores (R-3.3), commute routing (R-3.5), live room push, the email/digest worker, importing a listing from a URL, personal data export, and the per-member group fit matrix.
 - A way to grant the administrator role (today: `UPDATE app_user SET role = 'admin'`).
