@@ -30,8 +30,10 @@ db/
   migrations/sqlite/     the same versions in SQLite dialect
   data/                  local Postgres cluster (gitignored)
 script/       run.sh · backend.sh · frontend.sh · database.sh · release.sh
+mail/         Cloudflare Worker: outbound auth mail `mail.roomly.bid`, inbound routing
+deploy/       docker compose stack, nginx site, and the deploy script CI calls
 .github/      CI and release workflows
-docs/         backend/*.md · frontend/*.md
+docs/         backend/*.md · frontend/*.md · deploy.md
 ```
 
 ## Quick start
@@ -106,8 +108,18 @@ described in [docs/frontend/auth.md](docs/frontend/auth.md), the API in
 [docs/backend/endpoints.md](docs/backend/endpoints.md#login-8121).
 
 ## CI and releases
-- `ci.yml`: backend lint + test (with a `postgres:18` service), frontend build.
-- `release.yml`: pushing a `v*` tag runs the tests, `script/release.sh`, and publishes a GitHub Release with the backend wheel plus the frontend and migrations tarballs.
+- `ci.yml`: backend lint + test (with a `postgres:18` service), frontend build, and a `containers`
+  job that runs `deploy/test-deploy.sh`, builds both images and starts the production compose stack
+  (read-only, no capabilities) until it answers through the frontend, so a broken Dockerfile or
+  compose file fails before a tag does.
+- `mail.yml`: typecheck, vitest and a `wrangler deploy --dry-run` for the mail Worker; `main` deploys
+  the staging Worker.
+- `release.yml`: pushing a `v*` tag publishes both images to ghcr.io, deploys the mail Worker, then
+  the host, and opens the GitHub Release. There is no approval step — the tag is the deploy.
+
+Production is one VPS behind Cloudflare running docker compose, with the mail Worker alongside it.
+[docs/deploy.md](docs/deploy.md) covers the host, DNS, mail, the deploy key and what a compromised
+container can reach.
 
 ## Dependencies
 - [fastapi (v0.162)](https://fastapi.tiangolo.com/) + [pydantic (v2.14)](https://docs.pydantic.dev/), served by [uvicorn (v0.54)](https://www.uvicorn.org/)
