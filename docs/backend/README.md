@@ -9,6 +9,7 @@ script/backend.sh dev       # serve on 127.0.0.1:8000, applying pending migratio
 script/backend.sh test      # pytest: services, DTO validation and DDL invariants (Postgres and SQLite)
 script/backend.sh lint      # ruff
 script/backend.sh migrate   # apply migrations to the configured database (or its fallback)
+script/seed.sh [--reset]    # demo accounts, groups, listings and activity (development only)
 ```
 
 `GET /openapi.json` returns the OpenAPI document, with request and response schemas generated from

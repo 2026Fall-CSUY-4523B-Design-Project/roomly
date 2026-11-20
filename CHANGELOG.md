@@ -18,6 +18,9 @@ All notable changes to this project are documented here, following [Keep a Chang
 - `service/access.py` re-checks current group membership inside each action's transaction, and
   `service/notification_events.py` creates message alerts in the posting transaction.
 - `tests/test_services.py` exercises every use case through HTTP on PostgreSQL and SQLite.
+- `script/seed.sh` fills a development database with a coherent demo world (five accounts, two
+  groups, four listings, a held duplicate, messages, a poll, notifications, comparisons and saved
+  searches); `--reset` empties the tables first.
 - Real sign-up, sign-in, current-account lookup, and sign-out with salted scrypt passwords,
   seven-day bearer sessions, hashed tokens, and immediate session revocation.
 - Browser sign-up/sign-in forms, per-tab session restoration, expiry handling, and account navigation.

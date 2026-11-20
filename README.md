@@ -45,6 +45,8 @@ script/run.sh        # = script/run.sh --dev
 
 `script/run.sh --prod` builds and starts the backend and frontend against an external database; `DATABASE_URL` must be set.
 
+To fill the development database with demo accounts, groups, listings and activity, run `script/seed.sh` (all demo passwords are `roomly1234`; `--reset` empties the database first).
+
 The backend applies pending migrations when it starts. API docs: <http://127.0.0.1:8000/docs> (Swagger UI), `/redoc`, `/openapi.json`. All 56 endpoints are implemented with their DTOs; the remaining work is listed in [docs/backend/traceability.md](docs/backend/traceability.md#remaining-work).
 
 ## Database: PostgreSQL primary, SQLite fallback
@@ -61,6 +63,7 @@ The backend applies pending migrations when it starts. API docs: <http://127.0.0
 | `script/backend.sh` | `[dev\|prod\|test\|lint\|migrate]` API server, pytest, ruff, apply migrations |
 | `script/frontend.sh` | `[dev\|build\|start]` Next.js via pnpm |
 | `script/database.sh` | `[start\|reset\|psql]` local Postgres in the foreground (`ROOMLY_DB_PORT` overrides 5433) |
+| `script/seed.sh` | `[--reset]` demo accounts, groups, listings and activity in the development database |
 | `script/release.sh` | `[version]` builds wheels, the frontend tarball and the migrations tarball into `dist/` |
 
 ## Configuration
