@@ -89,6 +89,8 @@ script/frontend.sh build  # frontend build check (there are no frontend tests)
 
 The Postgres runs use a throwaway `roomly_test` database (`ROOMLY_TEST_DATABASE_URL` overrides it). Without a reachable server they are skipped locally and fail in CI.
 
+Acceptance testing: [docs/testing/uat.md](docs/testing/uat.md) is run against a seeded database before every major version bump.
+
 ## Account authentication
 
 Sign up at `/sign-up` or sign in at `/sign-in`; the header shows the account and a sign-out button.
