@@ -44,3 +44,52 @@ jobs:
         working-directory: frontend
       - run: pnpm build
         working-directory: frontend
+
+  # A tag deploys without review, so the exact images and compose file it will ship are built and
+  # started here on every pull request, hardening flags included.
+  containers:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      IMAGE_PREFIX: local
+      TAG: ci
+    steps:
+      - uses: actions/checkout@v7
+      - run: deploy/test-deploy.sh
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          load: true
+          tags: local/roomly-api:ci
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+      - name: Build the web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          load: true
+          tags: local/roomly-web:ci
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+      - name: Start the production stack
+        run: |
+          docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml config --quiet
+          docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml up -d
+      - name: Wait for it to answer through the frontend
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/health | grep -q '"database":"postgres"' \
+              && curl -fsS -o /dev/null http://127.0.0.1:3000/sign-in \
+              && curl -fsS http://127.0.0.1:3000/api/health | grep -q '"status":"ok"'; then
+              echo healthy; exit 0
+            fi
+            sleep 1
+          done
+          docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml ps -a
+          docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml logs --tail 80
+          exit 1

@@ -1,0 +1,62 @@
+name: Mail Worker
+
+on:
+  pull_request:
+    paths:
+      - mail/**
+      - .github/workflows/mail.yml
+      - .github/actions/deploy-mail-worker/**
+  push:
+    branches: [main]
+    paths:
+      - mail/**
+      - .github/workflows/mail.yml
+      - .github/actions/deploy-mail-worker/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mail-worker-${{ github.ref }}
+  # Pull requests only need the newest run; a push to main should finish its deploy.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: mail/.nvmrc
+          cache: pnpm
+          cache-dependency-path: mail/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: mail
+      - run: pnpm typecheck
+        working-directory: mail
+      - run: pnpm test
+        working-directory: mail
+      # Bundles the Worker and resolves the staging bindings without touching the account.
+      - run: pnpm exec wrangler deploy --env staging --dry-run
+        working-directory: mail
+
+  deploy-staging:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency:
+      group: mail-worker-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/deploy-mail-worker
+        with:
+          environment: staging
+          mail-secret: ${{ secrets.MAIL_SECRET }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

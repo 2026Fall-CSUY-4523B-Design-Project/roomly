@@ -1,0 +1,58 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "roomly-mail",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": ["no-reply@roomly.bid"]
+    }
+  ],
+  "vars": {
+    "APP_URL": "http://127.0.0.1:3000",
+    "MAIL_FROM": "Roomly <no-reply@roomly.bid>",
+    "SUPPORT_INBOX": "support@roomly.bid",
+    "MAIL_ALLOWED_RECIPIENTS": "",
+    "MAIL_TRANSPORT": "console"
+  },
+  // Each environment repeats the bindings and vars on purpose: `wrangler deploy --env` does not
+  // inherit them reliably, and a missing send_email binding fails at send time, not deploy time.
+  "env": {
+    "staging": {
+      "name": "roomly-mail-staging",
+      "routes": [{ "pattern": "staging-mail.roomly.bid", "custom_domain": true }],
+      "send_email": [
+        {
+          "name": "EMAIL",
+          "allowed_sender_addresses": ["no-reply@roomly.bid"]
+        }
+      ],
+      "vars": {
+        "APP_URL": "https://staging.roomly.bid",
+        "MAIL_FROM": "Roomly <no-reply@roomly.bid>",
+        "SUPPORT_INBOX": "support@roomly.bid",
+        "MAIL_ALLOWED_RECIPIENTS": "",
+        "MAIL_TRANSPORT": "email"
+      }
+    },
+    "production": {
+      "name": "roomly-mail",
+      "routes": [{ "pattern": "mail.roomly.bid", "custom_domain": true }],
+      "send_email": [
+        {
+          "name": "EMAIL",
+          "allowed_sender_addresses": ["no-reply@roomly.bid"]
+        }
+      ],
+      "vars": {
+        "APP_URL": "https://roomly.bid",
+        "MAIL_FROM": "Roomly <no-reply@roomly.bid>",
+        "SUPPORT_INBOX": "support@roomly.bid",
+        "MAIL_ALLOWED_RECIPIENTS": "",
+        "MAIL_TRANSPORT": "email"
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+/**
+ * Bindings and variables the Worker needs. Declared here rather than generated so the project
+ * builds the same way in CI, where no wrangler type output exists.
+ */
+
+/** Structured message accepted by the `send_email` binding (Email Service, Workers API). */
+export interface OutboundMessage {
+  to: string;
+  from: string;
+  subject: string;
+  html: string;
+  text: string;
+  replyTo?: string;
+}
+
+export interface EmailSender {
+  send(message: OutboundMessage): Promise<{ messageId: string }>;
+}
+
+/** The part of `ForwardableEmailMessage` this Worker uses for inbound mail. */
+export interface InboundEmail {
+  readonly from: string;
+  readonly to: string;
+  readonly rawSize: number;
+  readonly headers: Headers;
+  forward(to: string): Promise<void>;
+}
+
+export interface Env {
+  EMAIL: EmailSender;
+  /** Shared with the API: signs every POST /v1/send. Set with `wrangler secret put`. */
+  MAIL_SECRET: string;
+  /** Public site URL used in links; the API decides it per environment. */
+  APP_URL: string;
+  /** Envelope sender, e.g. `Roomly <no-reply@roomly.bid>`. Must be on the onboarded domain. */
+  MAIL_FROM: string;
+  /** Where inbound mail (support, replies, DMARC reports) is forwarded. */
+  SUPPORT_INBOX: string;
+  /** Comma-separated allowlist; when set, sends to anything else are rejected. Staging only. */
+  MAIL_ALLOWED_RECIPIENTS?: string;
+  /** `email` (default) sends through the binding; `console` prints for local runs. */
+  MAIL_TRANSPORT?: "email" | "console";
+}

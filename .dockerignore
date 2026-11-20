@@ -1,0 +1,21 @@
+# Both images build from the repository root, so trim everything they do not need.
+.git
+.github
+docs
+mail
+deploy
+script
+dist
+
+**/node_modules
+**/.next
+**/.wrangler
+**/__pycache__
+**/.venv
+**/.pytest_cache
+**/.ruff_cache
+**/*.tsbuildinfo
+
+db/data
+db/*.sqlite3
+*.log

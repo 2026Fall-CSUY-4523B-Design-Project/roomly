@@ -1,0 +1,59 @@
+name: Deploy mail Worker
+description: Deploy mail/ to one Cloudflare Workers environment and sync its secret.
+
+inputs:
+  environment:
+    description: wrangler environment to deploy to (staging or production)
+    required: true
+  mail-secret:
+    description: Shared HMAC secret the API signs with
+    required: true
+  api-token:
+    description: Cloudflare API token (Workers Scripts and Routes edit)
+    required: true
+  account-id:
+    description: Cloudflare account id
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+      with:
+        version: 10
+
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: mail/.nvmrc
+        cache: pnpm
+        cache-dependency-path: mail/pnpm-lock.yaml
+
+    - name: Install
+      shell: bash
+      working-directory: mail
+      run: pnpm install --frozen-lockfile
+
+    # Deploy first: `wrangler secret bulk` needs a Worker that already exists. The endpoint answers
+    # not_configured until the secret lands, which is a few seconds on a first deploy only.
+    - name: Deploy
+      shell: bash
+      working-directory: mail
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+      run: pnpm exec wrangler deploy --env "${{ inputs.environment }}"
+
+    - name: Sync secrets
+      shell: bash
+      working-directory: mail
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+        MAIL_SECRET: ${{ inputs.mail-secret }}
+      run: |
+        if [ -z "${MAIL_SECRET}" ]; then
+          echo "MAIL_SECRET is empty; set it on the GitHub environment" >&2
+          exit 1
+        fi
+        jq -n --arg value "${MAIL_SECRET}" '{MAIL_SECRET: $value}' \
+          | pnpm exec wrangler secret bulk --env "${{ inputs.environment }}"
