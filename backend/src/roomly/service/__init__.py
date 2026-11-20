@@ -1,6 +1,7 @@
 """Services: the control classes of SSDS §9.1. Business rules and transactions go here.
 
-Every method is a stub that raises NotImplementedError, which the API answers with 501.
+Each method opens one transaction, applies the use-case rule and returns a DTO; failures are
+``roomly.service.errors`` exceptions, which the controller layer maps to 4xx responses.
 """
 
 from dataclasses import dataclass

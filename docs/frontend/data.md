@@ -39,18 +39,12 @@ as is, anything else falls back to a generic sentence. Add new endpoints here ra
 Note the asymmetry: `searchListings`' internal `get()` throws `GET /search failed with <status>` and
 has **no** `.status` property, so it cannot distinguish 401 from 500. Don't build logic on it.
 
-## Fixtures
+## Real errors, not sample data
 
-With `ROOMLY_FIXTURES=on` (the dev default) an unimplemented endpoint returns a sample response
-from `backend/src/roomly/fixtures.py` with the route's real status code and an `X-Roomly-Fixture: 1`
-header, instead of `501`. So the UI can be developed before the backend logic exists.
-
-What this means when something looks wrong:
-
-- plausible data in the UI is not proof the backend works — check for that header, or set
-  `ROOMLY_FIXTURES=off` to get honest `501`s;
-- 401 (no/expired token) and 422 (bad body) are still real, so auth and validation behave normally;
-- fixture responses are fixed sample data, independent of the signed-in account.
+Every endpoint now has a real implementation, so a 4xx or 5xx in the UI is a real answer: 401 means
+the token is missing/expired, 403 means the account is not allowed, 409 means a rule conflict (the
+body may carry `constraint`), 422 is validation. There is no development mode that substitutes
+sample data; if a page looks empty, check the API response.
 
 ## Matching the DTOs
 

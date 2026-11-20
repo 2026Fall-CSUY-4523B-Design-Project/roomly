@@ -1,9 +1,9 @@
 # Endpoints
 
-The intended behavior of each endpoint, from the SSDS. Account authentication endpoints return real
-data. Unimplemented endpoints answer 501 with fixtures off after validation and authentication.
-"Guest" means no token is needed; every other route takes `Authorization: Bearer <token>` from
-sign-up or sign-in. Request and response schemas are in `/openapi.json`.
+The behavior of each endpoint, from the SSDS. Every route is implemented; validation (422) and
+authentication (401) run before the service. "Guest" means no token is needed; every other route
+takes `Authorization: Bearer <token>` from sign-up or sign-in. Request and response schemas are in
+`/openapi.json`.
 
 ## Login (§8.1.2.1)
 | | |

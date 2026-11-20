@@ -15,7 +15,7 @@ script/frontend.sh start   # serve a previous build (prod)
 | Page | Contents |
 | --- | --- |
 | [routing.md](routing.md) | routes, layout, header, loading/empty/error states, what is not built yet |
-| [data.md](data.md) | `lib/api.js`, the `/api` rewrite, search parameters, error handling, fixtures |
+| [data.md](data.md) | `lib/api.js`, the `/api` rewrite, search parameters, error handling |
 | [auth.md](auth.md) | `AuthProvider`, `sessionStorage`, restore, expiry, sign-out |
 | [ui.md](ui.md) | `globals.css` tokens and classes, `lib/format.js`, accessibility conventions |
 
@@ -35,11 +35,9 @@ frontend/
 ## Status
 
 Implemented against the real API: search/dashboard (UC-3), sign-up, sign-in, sign-out, session
-restore. Everything else in the navigation — compare, groups, notifications, the listing detail page
-— has no route yet and 404s; those links are placeholders for later slices.
-
-In dev the backend answers unimplemented endpoints with **fixture data** rather than 501, so pages
-can look complete while the logic is still a stub. See [data.md](data.md#fixtures).
+restore. The backend now implements every use case, but the frontend has not caught up: compare,
+groups, notifications and the listing detail page have no route yet and 404, and those links are
+placeholders for later slices.
 
 ## Conventions
 

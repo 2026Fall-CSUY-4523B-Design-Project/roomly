@@ -13,7 +13,7 @@ SQLite fallback. Backend details in [docs/backend/](docs/backend/README.md); fro
 backend/
   src/roomly/
     controller/   HTTP routers, one per SSDS use case (§8.1.2.1–8)
-    service/      account authentication; remaining methods are stubs (HTTP 501)
+    service/      business rules and transactions, one class per use case
     mapper/       hand-written SQL, one mapper per aggregate
     entity/       one dataclass per table
     dto/          request/response bodies: pydantic models with validation rules
@@ -45,9 +45,7 @@ script/run.sh        # = script/run.sh --dev
 
 `script/run.sh --prod` builds and starts the backend and frontend against an external database; `DATABASE_URL` must be set.
 
-The backend applies pending migrations when it starts. API docs: <http://127.0.0.1:8000/docs> (Swagger UI), `/redoc`, `/openapi.json`. All 56 endpoints are declared with their DTOs; sign-up, sign-in, sign-out and `/me` are implemented and the rest are stubs (see [docs/backend/traceability.md](docs/backend/traceability.md#to-do)).
-
-**Fixtures.** In dev a stub answers with a sample response from `backend/src/roomly/fixtures.py` and an `X-Roomly-Fixture: 1` header instead of 501, so the frontend can be built against the real API shape first. Validation (422) and authentication (401) still apply. `ROOMLY_FIXTURES=off` disables it; it is off in prod.
+The backend applies pending migrations when it starts. API docs: <http://127.0.0.1:8000/docs> (Swagger UI), `/redoc`, `/openapi.json`. All 56 endpoints are implemented with their DTOs; the remaining work is listed in [docs/backend/traceability.md](docs/backend/traceability.md#remaining-work).
 
 ## Database: PostgreSQL primary, SQLite fallback
 - At startup the backend connects to `DATABASE_URL` (PostgreSQL).
@@ -75,14 +73,13 @@ Copy [.env.example](.env.example) and export it, or set the variables in your de
 | `ROOMLY_LOG_LEVEL` | `DEBUG` (`INFO` in prod) | |
 | `DATABASE_URL` | `postgresql://roomly@127.0.0.1:5433/postgres` in dev | required in prod; `sqlite:///path` = SQLite only |
 | `ROOMLY_SQLITE_FALLBACK` | `db/roomly.sqlite3` in dev, off in prod | SQLite file used when Postgres is unreachable at startup; `off` disables |
-| `ROOMLY_FIXTURES` | `on` in dev, `off` in prod | stub endpoints answer with sample responses instead of 501 |
 | `ROOMLY_MIGRATIONS_DIR` | repo `db/migrations` | set it when running from installed wheels (the release ships `roomly-db-<v>.tar.gz`) |
 | `ROOMLY_API_URL` | `http://127.0.0.1:8000` | frontend rewrite target, read by `next.config.js` at build/start |
 
 ## Testing
 ```sh
 script/database.sh start  # local Postgres for the Postgres half of the suite (another terminal)
-script/backend.sh test    # pytest: DTO validation, DDL invariants on Postgres and SQLite, DB fallback
+script/backend.sh test    # pytest: services, DTO validation, DDL invariants on Postgres and SQLite, DB fallback
 script/backend.sh lint    # ruff
 script/frontend.sh build  # frontend build check (there are no frontend tests)
 ```
@@ -95,7 +92,7 @@ Sign up at `/sign-up` or sign in at `/sign-in`; the header shows the account and
 Passwords are salted scrypt, only SHA-256 hashes of bearer tokens are stored, sessions last seven
 days, and sign-out revokes the current session. The browser keeps the token in per-tab
 `sessionStorage` and restores it through `GET /me`; closing the tab clears storage but not the
-server session. Authentication requires real accounts even with fixtures on. Browser behaviour is
+server session. Browser behaviour is
 described in [docs/frontend/auth.md](docs/frontend/auth.md), the API in
 [docs/backend/endpoints.md](docs/backend/endpoints.md#login-8121).
 

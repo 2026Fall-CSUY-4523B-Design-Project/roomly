@@ -1,4 +1,4 @@
-"""Real HTTP authentication, on both database engines, never fixture authentication."""
+"""Real HTTP authentication, on both database engines."""
 
 import datetime as dt
 from concurrent.futures import ThreadPoolExecutor
@@ -17,7 +17,7 @@ PASSWORD = "  correct horse battery  "
 
 @pytest.fixture
 def client(db):
-    return TestClient(create_app(Settings.from_env({"ROOMLY_FIXTURES": "off"}), database=db))
+    return TestClient(create_app(Settings.from_env({}), database=db))
 
 
 def signup(client, email="person@example.com"):
@@ -36,7 +36,7 @@ def test_account_lifecycle_and_persistence(client, db):
     assert session["user"]["email"] == "person@example.com"
     assert client.get("/me", headers=auth(session)).json() == session["user"]
     # A fresh application uses the same persisted account and session.
-    restarted = TestClient(create_app(Settings.from_env({"ROOMLY_FIXTURES": "off"}), database=db))
+    restarted = TestClient(create_app(Settings.from_env({}), database=db))
     assert restarted.get("/me", headers=auth(session)).status_code == 200
     with db.transaction() as tx:
         user = UserMapper(tx).find_by_email("person@example.com")
@@ -75,7 +75,7 @@ def test_invalid_credentials_duplicate_and_isolation(client, db):
         assert client.get("/me", headers=headers).status_code == 401
 
 
-def test_expired_deleted_and_fixture_mode_tokens(client, db):
+def test_expired_and_deleted_tokens(client, db):
     session = signup(client)
     with db.transaction() as tx:
         tx.exec("UPDATE user_session SET created_at = %(created)s, expires_at = %(expired)s",
@@ -88,10 +88,10 @@ def test_expired_deleted_and_fixture_mode_tokens(client, db):
         UserMapper(tx).scrub(user.id)
     assert client.get("/me", headers=auth(session)).status_code == 401
     assert client.post("/auth/sign-in", json={"email": "person@example.com", "password": PASSWORD}).status_code == 401
-    fixture_client = TestClient(create_app(Settings.from_env({}), database=db))
-    assert fixture_client.get("/groups", headers={"Authorization": "Bearer any-token"}).status_code == 401
-    real = signup(fixture_client, "real@example.com")
-    assert fixture_client.get("/me", headers=auth(real)).json()["email"] == "real@example.com"
+    restarted = TestClient(create_app(Settings.from_env({}), database=db))
+    assert restarted.get("/groups", headers={"Authorization": "Bearer any-token"}).status_code == 401
+    real = signup(restarted, "real@example.com")
+    assert restarted.get("/me", headers=auth(real)).json()["email"] == "real@example.com"
 
 
 def test_concurrent_duplicate_signup(client, db):

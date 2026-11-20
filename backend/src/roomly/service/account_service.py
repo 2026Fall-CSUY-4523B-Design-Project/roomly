@@ -14,6 +14,16 @@ from roomly.dto.account import (
 )
 from roomly.entity import User
 from roomly.mapper.account_mapper import SessionMapper, UserMapper
+from roomly.mapper.comparison_mapper import ComparisonMapper
+from roomly.mapper.group_mapper import GroupMapper, InvitationMapper, MembershipMapper
+from roomly.mapper.listing_mapper import (
+    DuplicateMapper,
+    ReportMapper,
+    SourceRecordMapper,
+)
+from roomly.mapper.notification_mapper import NotificationMapper
+from roomly.mapper.room_mapper import PollMapper, ReactionMapper
+from roomly.mapper.search_mapper import CommuteMapper, SavedSearchMapper
 from roomly.service.errors import Conflict, Unauthorized
 
 SESSION_LIFETIME = dt.timedelta(days=7)
@@ -98,4 +108,38 @@ class AccountService:
 
     def delete_account(self, user: User, req: DeleteAccountRequest) -> None:
         """R-1.4 / §8.1.2.1 alt. flows 2-3: blocked while the user owns a group with other members."""
-        raise NotImplementedError
+        if not password_matches(req.password, user.password_hash):
+            raise Unauthorized("Invalid password.")
+        with self.db.transaction() as tx:
+            current = UserMapper(tx).lock(user.id)
+            if current is None or current.deleted_at is not None:
+                raise Unauthorized("This account no longer exists.")
+            memberships = MembershipMapper(tx).current_for_user(user.id)
+            owners = [m for m in memberships if m.is_owner]
+            for membership in owners:
+                if MembershipMapper(tx).count_current(membership.group_id) > 1:
+                    raise Conflict("Transfer ownership of your groups before deleting the account.")
+            for membership in owners:
+                GroupMapper(tx).delete(membership.group_id)
+            MembershipMapper(tx).end_all_for_user(user.id)
+
+            # Personal rows: nothing left to read, nothing left to notify.
+            SessionMapper(tx).delete_all_for_user(user.id)
+            NotificationMapper(tx).delete_all_for_user(user.id)
+            CommuteMapper(tx).delete_all_for_user(user.id)
+            SavedSearchMapper(tx).delete_all_for_user(user.id)
+            ComparisonMapper(tx).delete_personal_for_user(user.id)
+            ReactionMapper(tx).delete_all_for_user(user.id)
+            PollMapper(tx).delete_votes_for_user(user.id)
+
+            # Shared content keeps the id (so it can say "Deleted user") but loses the link.
+            SourceRecordMapper(tx).clear_submitter(user.id)
+            ReportMapper(tx).clear_reporter(user.id)
+            ReportMapper(tx).clear_resolver(user.id)
+            InvitationMapper(tx).clear_inviter(user.id)
+            if current.email is not None:
+                InvitationMapper(tx).delete_for_email(current.email)
+            ComparisonMapper(tx).clear_saved_by(user.id)
+            PollMapper(tx).clear_creator(user.id)
+            DuplicateMapper(tx).clear_reviewer(user.id)
+            UserMapper(tx).scrub(user.id)
