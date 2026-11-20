@@ -5,6 +5,9 @@ All notable changes to this project are documented here, following [Keep a Chang
 ## [Unreleased]
 
 ### Added
+- `docs/frontend/` covering routing, API access, authentication and UI conventions.
+- `docs/backend/` split into layers, database, endpoints and traceability; `docs/backend.md` is gone
+  and the README is trimmed to the shared setup and links to both doc sets.
 - Real sign-up, sign-in, current-account lookup, and sign-out with salted scrypt passwords,
   seven-day bearer sessions, hashed tokens, and immediate session revocation.
 - Browser sign-up/sign-in forms, per-tab session restoration, expiry handling, and account navigation.

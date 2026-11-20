@@ -1,11 +1,12 @@
 # Roomly Mono repo
 
-## About
-Roomly is a mono repo that contains multiple packages and applications related to the Roomly project. This repository is structured to facilitate development, testing, and deployment of various components in a unified manner.
+Roomly: a monorepo for the Roomly project — Next.js frontend, FastAPI backend, PostgreSQL with a
+SQLite fallback. Backend details in [docs/backend/](docs/backend/README.md); frontend in
+[docs/frontend/](docs/frontend/README.md).
 
 ## Structure
-- Frontend: Node, Next.js 12 pages router
-- Backend: Python, FastAPI + pydantic on uvicorn; layers DTO → controller → service → SQL mapper → entity ([docs/backend.md](docs/backend.md))
+- Frontend: Node, Next.js 12 pages router ([docs/frontend/](docs/frontend/README.md))
+- Backend: Python, FastAPI + pydantic on uvicorn; layers DTO → controller → service → SQL mapper → entity ([docs/backend/](docs/backend/README.md))
 - DB: PostgreSQL as primary, SQLite as fallback
 
 ```
@@ -30,7 +31,7 @@ db/
   data/                  local Postgres cluster (gitignored)
 script/       run.sh · backend.sh · frontend.sh · database.sh · release.sh
 .github/      CI and release workflows
-docs/         backend.md
+docs/         backend/*.md · frontend/*.md
 ```
 
 ## Quick start
@@ -44,17 +45,16 @@ script/run.sh        # = script/run.sh --dev
 
 `script/run.sh --prod` builds and starts the backend and frontend against an external database; `DATABASE_URL` must be set.
 
-The backend applies pending migrations when it starts. API docs: <http://127.0.0.1:8000/docs> (Swagger UI), `/redoc`, `/openapi.json`. All 56 endpoints are declared with their DTOs. Sign-up, sign-in, sign-out and `/me` are implemented; remaining service methods are stubs (see [docs/backend.md](docs/backend.md#to-do)).
+The backend applies pending migrations when it starts. API docs: <http://127.0.0.1:8000/docs> (Swagger UI), `/redoc`, `/openapi.json`. All 56 endpoints are declared with their DTOs; sign-up, sign-in, sign-out and `/me` are implemented and the rest are stubs (see [docs/backend/traceability.md](docs/backend/traceability.md#to-do)).
 
-**Fixtures for frontend work.** In dev, a stub answers with a sample response from `backend/src/roomly/fixtures.py` instead of 501. The response has the route's real status code and an `X-Roomly-Fixture: 1` header. Request validation (422) and real session authentication (401) still apply, so the frontend can be built against the real API shape before the logic exists. Sign up or sign in to obtain a real token for protected routes. Fixture responses for unfinished routes remain fixed sample data, independent of the signed-in account. Methods that get implemented return real data automatically. `ROOMLY_FIXTURES=off` turns this off; it is off by default in prod.
+**Fixtures.** In dev a stub answers with a sample response from `backend/src/roomly/fixtures.py` and an `X-Roomly-Fixture: 1` header instead of 501, so the frontend can be built against the real API shape first. Validation (422) and authentication (401) still apply. `ROOMLY_FIXTURES=off` disables it; it is off in prod.
 
 ## Database: PostgreSQL primary, SQLite fallback
 - At startup the backend connects to `DATABASE_URL` (PostgreSQL).
 - If Postgres is unreachable and a fallback file is configured, it logs a warning and runs on SQLite instead. The fallback is `db/roomly.sqlite3` in dev and off in prod; `ROOMLY_SQLITE_FALLBACK` changes it.
-- `DATABASE_URL=sqlite:///path/to/file.sqlite3` runs on SQLite only.
+- `DATABASE_URL=sqlite:///path/to/file.sqlite3` runs on SQLite only. The two are separate databases; data is not copied back.
 - `GET /health` reports which engine is in use: `{"status": "ok", "database": "postgres"}`.
-- The fallback is a separate database: data written to SQLite is not copied back into Postgres.
-- Both engines run the same schema and the same invariants, for example at most six members per group, one vote per member and one notification per event. See [docs/backend.md](docs/backend.md#database).
+- Both engines run the same schema and the same invariants (at most six members per group, one vote per member, one notification per event). See [docs/backend/database.md](docs/backend/database.md).
 
 ## Scripts
 | Script | Usage |
@@ -84,10 +84,20 @@ Copy [.env.example](.env.example) and export it, or set the variables in your de
 script/database.sh start  # local Postgres for the Postgres half of the suite (another terminal)
 script/backend.sh test    # pytest: DTO validation, DDL invariants on Postgres and SQLite, DB fallback
 script/backend.sh lint    # ruff
-script/frontend.sh build  # frontend build check
+script/frontend.sh build  # frontend build check (there are no frontend tests)
 ```
 
 The Postgres runs use a throwaway `roomly_test` database (`ROOMLY_TEST_DATABASE_URL` overrides it). Without a reachable server they are skipped locally and fail in CI.
+
+## Account authentication
+
+Sign up at `/sign-up` or sign in at `/sign-in`; the header shows the account and a sign-out button.
+Passwords are salted scrypt, only SHA-256 hashes of bearer tokens are stored, sessions last seven
+days, and sign-out revokes the current session. The browser keeps the token in per-tab
+`sessionStorage` and restores it through `GET /me`; closing the tab clears storage but not the
+server session. Authentication requires real accounts even with fixtures on. Browser behaviour is
+described in [docs/frontend/auth.md](docs/frontend/auth.md), the API in
+[docs/backend/endpoints.md](docs/backend/endpoints.md#login-8121).
 
 ## CI and releases
 - `ci.yml`: backend lint + test (with a `postgres:18` service), frontend build.
@@ -105,17 +115,3 @@ The Postgres runs use a throwaway `roomly_test` database (`ROOMLY_TEST_DATABASE_
 
 ## Useful links
 - [Roomly SSDS](https://docs.google.com/document/d/1Dh9CcZlhd7KVQ4CXoJAdhSbQfYPbDyGvlC8uDVS-4Y0)
-
-## Account authentication
-
-Open `/sign-up` to create an account or `/sign-in` to sign in. The header shows the current
-account and a sign-out button. Passwords are hashed with salted scrypt (N=32768, r=8, p=3);
-only SHA-256 hashes of random bearer tokens are stored in the database. Sessions expire after
-seven days, and sign-out revokes the current session immediately. Other sessions stay active.
-The browser stores the token in per-tab `sessionStorage`, restores it through `GET /me` on
-reload, and clears it on expiry or successful sign-out. Closing the tab clears browser storage;
-it does not revoke the server session. Authentication requires real accounts even with fixtures on.
-Account deletion and group management remain separate, unfinished slices.
-
-Authentication tests in `backend/tests/test_auth.py` exercise the HTTP API against both engines,
-including invalid credentials, expiry, revocation, persistence, and concurrent duplicate sign-ups.
