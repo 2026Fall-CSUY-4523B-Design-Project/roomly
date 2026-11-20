@@ -1,18 +1,31 @@
 # Endpoints
 
-The intended behavior of each endpoint, from the SSDS. Account authentication endpoints return real
-data. Unimplemented endpoints answer 501 with fixtures off after validation and authentication.
-"Guest" means no token is needed; every other route takes `Authorization: Bearer <token>` from
-sign-up or sign-in. Request and response schemas are in `/openapi.json`.
+The behavior of each endpoint, from the SSDS. Every route is implemented; validation (422) and
+authentication (401) run before the service. "Guest" means no token is needed; every other route
+takes `Authorization: Bearer <token>` from sign-up or sign-in. Request and response schemas are in
+`/openapi.json`.
 
 ## Login (§8.1.2.1)
 | | |
 | --- | --- |
-| `POST /auth/sign-up` | guest · create an account and sign in |
-| `POST /auth/sign-in` | guest · sign in with email and password |
+| `POST /auth/sign-up` | guest · create an account and email a confirmation link; answers `201 {email, verification_sent}` and **no session** (`verification_sent` is false when the mail service was down; resend) |
+| `POST /auth/verify-email` | guest · `{token}` from the emailed link → `204`; a link works once and lasts 24 hours; invalid or used → `422` with `detail.code = "invalid_token"` |
+| `POST /auth/verify-email/resend` | guest · `{email}` → `202` always, whether or not the address needs confirming |
+| `POST /auth/forgot-password` | guest · `{email}` → `202` always; mails a reset link when the account exists |
+| `POST /auth/reset-password` | guest · `{token, password}` → `204`; sets the password, signs the account out everywhere and spends its other reset links; a link works once and lasts 30 minutes |
+| `POST /auth/sign-in` | guest · sign in with email and password; an unconfirmed address gets `403` with `detail.code = "email_not_verified"` (only after the password matched) |
 | `POST /auth/sign-out` | invalidate this session |
 | `GET /me` | the signed-in account |
 | `DELETE /me` | delete the account (the password confirms it); shared content then shows "Deleted user" |
+
+Emailed links: one per minute and three per hour per account and kind, counted from `auth_token`
+rows; a request over the limit still answers `202` and sends nothing. A link that the mail service
+rejected is discarded and does not count. Only the SHA-256 of a token is stored. A successful reset
+also confirms the address, because the person just proved they read that mailbox. Errors that a
+client may branch on carry `detail: {"code", "message"}` instead of a plain string.
+
+Mail is sent by the Cloudflare Worker in `mail/` (`ROOMLY_MAIL=http`); in development the links are
+written to the backend log (`ROOMLY_MAIL=log`).
 
 ## Group Management (§8.1.2.2)
 | | |

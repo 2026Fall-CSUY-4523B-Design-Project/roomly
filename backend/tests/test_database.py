@@ -21,7 +21,7 @@ def test_unreachable_postgres_falls_back_to_sqlite(tmp_path: Path, caplog: pytes
     try:
         assert db.dialect == "sqlite"
         assert "falling back to SQLite" in caplog.text
-        assert db.migrate(Settings.from_env({}).migrations_dir) == ["0001_init"]
+        assert db.migrate(Settings.from_env({}).migrations_dir) == ["0001_init", "0002_auth_email"]
         with db.transaction() as tx:
             assert tx.scalar("SELECT count(*) FROM app_user") == 0
     finally:
@@ -43,11 +43,14 @@ def test_sqlite_url_runs_on_sqlite_only(tmp_path: Path) -> None:
         Database("sqlite:///:memory:").open()
 
 
+PROD_MAIL = {"ROOMLY_MAIL_URL": "https://mail.example", "ROOMLY_MAIL_SECRET": "s"}
+
+
 def test_fallback_defaults_on_in_dev_off_in_prod() -> None:
     assert Settings.from_env({}).sqlite_fallback is not None
-    assert Settings.from_env({"ROOMLY_ENV": "prod", "DATABASE_URL": "postgresql://db/x"}).sqlite_fallback is None
+    assert Settings.from_env({"ROOMLY_ENV": "prod", "DATABASE_URL": "postgresql://db/x", **PROD_MAIL}).sqlite_fallback is None
     assert Settings.from_env({"ROOMLY_SQLITE_FALLBACK": "off"}).sqlite_fallback is None
-    prod_opt_in = Settings.from_env({"ROOMLY_ENV": "prod", "DATABASE_URL": "postgresql://db/x",
+    prod_opt_in = Settings.from_env({"ROOMLY_ENV": "prod", "DATABASE_URL": "postgresql://db/x", **PROD_MAIL,
                                      "ROOMLY_SQLITE_FALLBACK": "/var/lib/roomly/fallback.sqlite3"})
     assert prod_opt_in.sqlite_fallback == Path("/var/lib/roomly/fallback.sqlite3")
 

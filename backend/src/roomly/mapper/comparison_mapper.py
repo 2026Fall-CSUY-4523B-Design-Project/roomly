@@ -53,3 +53,6 @@ class ComparisonMapper(Mapper):
 
     def delete_personal_for_user(self, user_id: UUID) -> int:
         return self._exec("DELETE FROM comparison WHERE saved_by = %(id)s AND group_id IS NULL", {"id": user_id})
+
+    def clear_saved_by(self, user_id: UUID) -> int:
+        return self._exec("UPDATE comparison SET saved_by = NULL WHERE saved_by = %(id)s", {"id": user_id})

@@ -30,7 +30,7 @@ def bearer_token(credentials: Annotated[HTTPAuthorizationCredentials, Depends(_b
 
 
 def current_user(request: Request, token: Annotated[str, Depends(bearer_token)]) -> User:
-    """Resolve a real session, including in development fixture mode."""
+    """Resolve the live account behind a bearer session."""
     return services(request).account.authenticate(token)
 
 

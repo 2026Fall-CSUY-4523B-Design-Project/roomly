@@ -77,7 +77,7 @@ violation becomes a 409 that names the constraint.
 | A notification is sent once per (recipient, kind, event) | unique `notification_once_key` |
 | A deleted account holds no personal data (R-1.4) | check on `app_user` |
 
-21 tables: `app_user`, `user_session`, `user_group`, `group_membership`, `group_invitation`,
+22 tables: `app_user`, `user_session`, `auth_token`, `user_group`, `group_membership`, `group_invitation`,
 `listing_source`, `listing`, `source_record`, `listing_price_history`, `duplicate_candidate`,
 `data_report`, `commute_destination`, `saved_search`, `comparison`, `comparison_listing`, `message`,
 `message_reaction`, `poll`, `poll_option`, `poll_vote`, `notification`.

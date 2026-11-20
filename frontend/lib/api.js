@@ -29,12 +29,26 @@ export async function accountRequest(path, { method = "GET", body, token } = {})
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    const message = Array.isArray(data.detail)
-      ? data.detail.map((item) => `${item.loc.slice(1).join(".")}: ${item.msg}`).join(" ")
-      : typeof data.detail === "string" ? data.detail : "Something went wrong. Please try again.";
+    // detail is a string, a list of 422 field errors, or {code, message} when the client may branch on a reason.
+    const detail = data.detail;
+    const message = Array.isArray(detail)
+      ? detail.map((item) => `${item.loc.slice(1).join(".")}: ${item.msg}`).join(" ")
+      : typeof detail === "string" ? detail
+      : typeof detail?.message === "string" ? detail.message : "Something went wrong. Please try again.";
     const error = new Error(message);
     error.status = res.status;
+    error.code = typeof detail === "object" && !Array.isArray(detail) ? detail?.code : undefined;
     throw error;
   }
   return res.status === 204 ? null : res.json();
 }
+
+// Email confirmation and password reset. The two "send" calls answer 202 whether or not the address
+// has an account, so callers must show the same message either way.
+export const signUp = (body) => accountRequest("/auth/sign-up", { method: "POST", body });
+export const verifyEmail = (token) => accountRequest("/auth/verify-email", { method: "POST", body: { token } });
+export const resendVerification = (email) =>
+  accountRequest("/auth/verify-email/resend", { method: "POST", body: { email } });
+export const forgotPassword = (email) => accountRequest("/auth/forgot-password", { method: "POST", body: { email } });
+export const resetPassword = (token, password) =>
+  accountRequest("/auth/reset-password", { method: "POST", body: { token, password } });

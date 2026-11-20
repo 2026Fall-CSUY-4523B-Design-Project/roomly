@@ -15,7 +15,7 @@ script/frontend.sh start   # serve a previous build (prod)
 | Page | Contents |
 | --- | --- |
 | [routing.md](routing.md) | routes, layout, header, loading/empty/error states, what is not built yet |
-| [data.md](data.md) | `lib/api.js`, the `/api` rewrite, search parameters, error handling, fixtures |
+| [data.md](data.md) | `lib/api.js`, the `/api` rewrite, search parameters, error handling |
 | [auth.md](auth.md) | `AuthProvider`, `sessionStorage`, restore, expiry, sign-out |
 | [ui.md](ui.md) | `globals.css` tokens and classes, `lib/format.js`, accessibility conventions |
 
@@ -23,9 +23,9 @@ script/frontend.sh start   # serve a previous build (prod)
 
 ```
 frontend/
-  pages/       _app.js (providers + CSS), index.js (dashboard), sign-in.js, sign-up.js
-  components/  Header, AuthForm, FilterPanel, ListingCard
-  lib/         api.js (HTTP), auth.js (session), format.js (display helpers)
+  pages/       _app.js (providers + CSS), index.js (dashboard), sign-in.js, sign-up.js, verify-email.js, forgot-password.js, reset-password.js
+  components/  Header, AuthForm, AuthPage, ResendVerification, FilterPanel, ListingCard
+  lib/         api.js (HTTP), auth.js (session), token.js (emailed-link token), format.js (display helpers)
   styles/      globals.css — the whole stylesheet
   next.config.js  /api/* rewrite; jsconfig.json  @/* → frontend/
 ```
@@ -34,12 +34,10 @@ frontend/
 
 ## Status
 
-Implemented against the real API: search/dashboard (UC-3), sign-up, sign-in, sign-out, session
-restore. Everything else in the navigation — compare, groups, notifications, the listing detail page
-— has no route yet and 404s; those links are placeholders for later slices.
-
-In dev the backend answers unimplemented endpoints with **fixture data** rather than 501, so pages
-can look complete while the logic is still a stub. See [data.md](data.md#fixtures).
+Implemented against the real API: search/dashboard (UC-3), sign-up with email confirmation, sign-in, password reset, sign-out, session
+restore. The backend now implements every use case, but the frontend has not caught up: compare,
+groups, notifications and the listing detail page have no route yet and 404, and those links are
+placeholders for later slices.
 
 ## Conventions
 

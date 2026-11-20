@@ -19,15 +19,17 @@ from roomly.controller import ROUTERS
 from roomly.controller.errors import install_error_handlers
 from roomly.db import Database
 from roomly.service import Services
+from roomly.service.mailer import Mailer, build_mailer
 
 logger = logging.getLogger("roomly")
 
 VERSION = version("roomly")   # backend/pyproject.toml, one number with the release tag
 
 
-def create_app(settings: Settings | None = None, database: Database | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, database: Database | None = None,
+               mailer: Mailer | None = None) -> FastAPI:
     """Build the app. The database opens (and migrates) in the lifespan when serving;
-    tests open it themselves."""
+    tests open it themselves and pass a capturing ``mailer``."""
     settings = settings or Settings.from_env(os.environ)
     database = database or Database(settings.database_url, fallback=settings.sqlite_fallback)
 
@@ -48,7 +50,8 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     )
     app.state.settings = settings
     app.state.database = database
-    app.state.services = Services.build(database)
+    mailer = mailer or build_mailer(settings.mail, settings.app_url, settings.mail_url, settings.mail_secret)
+    app.state.services = Services.build(database, mailer)
     install_error_handlers(app)
     for router in ROUTERS:
         app.include_router(router)

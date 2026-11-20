@@ -101,6 +101,19 @@ class ListingMapper(Mapper):
     def find(self, listing_id: UUID) -> Listing | None:
         return self._one(Listing, f"SELECT {_LISTING} FROM listing WHERE id = %(id)s", {"id": listing_id})
 
+    def update(self, listing_id: UUID, values: dict[str, Any]) -> Listing:
+        """Patch the given columns; the trigger refreshes ``updated_at``."""
+        unknown = set(values) - _LISTING_WRITABLE
+        if unknown:
+            raise ValueError(f"not listing columns: {sorted(unknown)}")
+        params = {k: jsonb(v) if k in _JSON_COLUMNS else v for k, v in values.items()}
+        params["id"] = listing_id
+        assignments = ", ".join(f"{name} = %({name})s" for name in values)
+        sql = f"UPDATE listing SET {assignments} WHERE id = %(id)s RETURNING {_LISTING}"
+        listing = self._one(Listing, sql, params)
+        assert listing is not None
+        return listing
+
     def lock(self, listing_id: UUID) -> Listing | None:
         return self._one(Listing, f"SELECT {_LISTING} FROM listing WHERE id = %(id)s FOR UPDATE", {"id": listing_id})
 
@@ -271,6 +284,17 @@ class DuplicateMapper(Mapper):
         assert candidate is not None
         return candidate
 
+    def exists_pair(self, record_a_id: UUID, record_b_id: UUID) -> bool:
+        """Either orientation already suspected or reviewed."""
+        sql = """
+            SELECT count(*) FROM duplicate_candidate
+             WHERE (record_a_id = %(a)s AND record_b_id = %(b)s)
+                OR (record_a_id = %(b)s AND record_b_id = %(a)s)"""
+        return int(self._scalar(sql, {"a": record_a_id, "b": record_b_id})) > 0
+
+    def clear_reviewer(self, user_id: UUID) -> int:
+        return self._exec("UPDATE duplicate_candidate SET reviewed_by = NULL WHERE reviewed_by = %(id)s", {"id": user_id})
+
     def count_queued_for_listing(self, listing_id: UUID) -> int:
         return int(self._scalar(
             """SELECT count(*) FROM duplicate_candidate c JOIN source_record r ON r.id IN (c.record_a_id, c.record_b_id)
@@ -289,6 +313,15 @@ class ReportMapper(Mapper):
         report = self._one(DataReport, sql, params)
         assert report is not None
         return report
+
+    def find(self, report_id: UUID) -> DataReport | None:
+        return self._one(DataReport, f"SELECT {_REPORT} FROM data_report WHERE id = %(id)s", {"id": report_id})
+
+    def clear_reporter(self, user_id: UUID) -> int:
+        return self._exec("UPDATE data_report SET reporter_id = NULL WHERE reporter_id = %(id)s", {"id": user_id})
+
+    def clear_resolver(self, user_id: UUID) -> int:
+        return self._exec("UPDATE data_report SET resolved_by = NULL WHERE resolved_by = %(id)s", {"id": user_id})
 
     def list_by_status(self, status: str, limit: int, offset: int) -> tuple[list[DataReport], int]:
         params = {"status": status, "limit": limit, "offset": offset}

@@ -8,14 +8,39 @@ All notable changes to this project are documented here, following [Keep a Chang
 - `docs/frontend/` covering routing, API access, authentication and UI conventions.
 - `docs/backend/` split into layers, database, endpoints and traceability; `docs/backend.md` is gone
   and the README is trimmed to the shared setup and links to both doc sets.
+- The remaining service methods, completing all eight SSDS use cases: group creation, invitations,
+  acceptance, ownership transfer, removal and dissolution; manual listing submission with address
+  normalization and duplicate candidates; listing cards with source provenance, conflicts, price
+  history and price per sq ft; administrator source management, duplicate merge/keep-separate/split
+  and data-report resolution; hard-constraint search, saved searches and up to three commute
+  destinations; comparison preview, save, share and change tracking; room messages, reactions and
+  polls; notifications with per-kind settings; and account deletion that scrubs personal data.
+- `service/access.py` re-checks current group membership inside each action's transaction, and
+  `service/notification_events.py` creates message alerts in the posting transaction.
+- `tests/test_services.py` exercises every use case through HTTP on PostgreSQL and SQLite.
+- `script/seed.sh` fills a development database with a coherent demo world (five accounts, two
+  groups, four listings, a held duplicate, messages, a poll, notifications, comparisons and saved
+  searches); `--reset` empties the tables first.
 - Real sign-up, sign-in, current-account lookup, and sign-out with salted scrypt passwords,
   seven-day bearer sessions, hashed tokens, and immediate session revocation.
 - Browser sign-up/sign-in forms, per-tab session restoration, expiry handling, and account navigation.
 - HTTP authentication tests on PostgreSQL and SQLite, including concurrent duplicate sign-ups.
 
+- Email confirmation and password reset: sign-up emails a 24-hour single-use link and creates no
+  session, sign-in is refused (`403`, `email_not_verified`) until it is opened, and
+  `/forgot-password` sends a 30-minute reset link that signs the account out everywhere. Links are
+  stored as SHA-256 hashes and limited to one a minute and three an hour per account. Migration
+  `0002_auth_email` (both engines) adds `email_verified_at`, marks existing accounts verified, and
+  creates `auth_token`.
+- `ROOMLY_MAIL`, `ROOMLY_MAIL_URL`, `ROOMLY_MAIL_SECRET`, `ROOMLY_APP_URL`: production sends through
+  a signed HTTP call to the mail Worker; development logs the links.
+
 ### Changed
-- Protected fixture routes now require real authentication; arbitrary bearer tokens are rejected.
-  Unit tests for unfinished routes explicitly isolate authentication.
+- `POST /auth/sign-up` answers `201 {email, verification_sent}` instead of a session.
+
+### Removed
+- Fixture mode (`ROOMLY_FIXTURES`, `roomly/fixtures.py` and the 501 responses): every endpoint now
+  returns real data, so the development-only sample responses are gone.
 
 ## [2.1.0] - 2026-10-29
 

@@ -7,8 +7,11 @@ A thin browser layer over the backend's bearer sessions. Plain passwords never l
 
 | Call | Body / result |
 | --- | --- |
-| `POST /auth/sign-up` | `{email, password, display_name?}` → `{token, expires_at, user}` |
-| `POST /auth/sign-in` | `{email, password}` → `{token, expires_at, user}` |
+| `POST /auth/sign-up` | `{email, password, display_name?}` → `{email, verification_sent}`; no session |
+| `POST /auth/verify-email` | `{token}` → `204` |
+| `POST /auth/verify-email/resend`, `/auth/forgot-password` | `{email}` → `202`, identical for every address |
+| `POST /auth/reset-password` | `{token, password}` → `204`; every session of the account is revoked |
+| `POST /auth/sign-in` | `{email, password}` → `{token, expires_at, user}`; `403` + `code: "email_not_verified"` before confirmation |
 | `POST /auth/sign-out` | bearer token → `204` |
 | `GET /me` | bearer token → user |
 
@@ -44,6 +47,19 @@ out, closing the tab drops the token (the server session survives; there is no c
 `AuthForm` uses `loading` to show "Checking session…" instead of the form, and redirects to `/` with
 `router.replace` after a successful submit; a signed-in visitor sees "You are signed in as …"
 instead of the form.
+
+## Email confirmation and password reset
+
+- **Sign-up creates no session.** `AuthForm` shows "Check your email" with `ResendVerification`; the
+  user signs in after opening the link. A sign-in answered `403 email_not_verified` shows the same
+  panel (identified by `err.code`, which `accountRequest` copies from `detail.code`).
+- **Token pages** (`/verify-email`, `/reset-password`) read `?token=` once through `useUrlToken`
+  (`lib/token.js`), then replace the URL with the bare path (shallow) so the token leaves the address
+  bar, history and later `Referer`. Both send `Referrer-Policy: no-referrer` (`next.config.js`) and a
+  `<meta name="referrer">`. `/verify-email` calls the API once per load (a ref guards the call; the
+  token is single-use).
+- **Send-a-link calls answer the same for every address**, so the copy says "If an account exists…"
+  and never "we sent"; keep it that way.
 
 ## Rules when extending
 

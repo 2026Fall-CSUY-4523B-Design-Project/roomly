@@ -2,11 +2,15 @@
 
 
 class ServiceError(Exception):
+    """``code`` is a stable machine-readable reason a client may branch on; the response then
+    carries ``detail: {"code", "message"}`` instead of the plain message."""
+
     status = 400
 
-    def __init__(self, detail: str) -> None:
+    def __init__(self, detail: str, code: str | None = None) -> None:
         super().__init__(detail)
         self.detail = detail
+        self.code = code
 
 
 class Unauthorized(ServiceError):

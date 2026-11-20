@@ -168,3 +168,9 @@ class InvitationMapper(Mapper):
 
     def delete_pending_for_email(self, email: str) -> int:
         return self._exec("DELETE FROM group_invitation WHERE email = %(email)s AND status = 'pending'", {"email": email})
+
+    def delete_for_email(self, email: str) -> int:
+        return self._exec("DELETE FROM group_invitation WHERE email = %(email)s", {"email": email})
+
+    def clear_inviter(self, user_id: UUID) -> int:
+        return self._exec("UPDATE group_invitation SET invited_by = NULL WHERE invited_by = %(id)s", {"id": user_id})

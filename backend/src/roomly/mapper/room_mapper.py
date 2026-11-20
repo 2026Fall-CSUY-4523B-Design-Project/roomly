@@ -110,6 +110,9 @@ class ReactionMapper(Mapper):
              GROUP BY message_id, emoji ORDER BY message_id, count(*) DESC, emoji"""
         return self._all(ReactionCount, sql, {"ids": message_ids, "viewer": viewer_id})
 
+    def delete_all_for_user(self, user_id: UUID) -> int:
+        return self._exec("DELETE FROM message_reaction WHERE user_id = %(id)s", {"id": user_id})
+
 
 class PollMapper(Mapper):
     def insert(self, group_id: UUID, created_by: UUID, question: str) -> Poll:
@@ -170,3 +173,9 @@ class PollMapper(Mapper):
     def my_vote(self, poll_id: UUID, user_id: UUID) -> UUID | None:
         return self._scalar("SELECT option_id FROM poll_vote WHERE poll_id = %(p)s AND user_id = %(u)s",
                             {"p": poll_id, "u": user_id}, as_type=UUID)
+
+    def delete_votes_for_user(self, user_id: UUID) -> int:
+        return self._exec("DELETE FROM poll_vote WHERE user_id = %(id)s", {"id": user_id})
+
+    def clear_creator(self, user_id: UUID) -> int:
+        return self._exec("UPDATE poll SET created_by = NULL WHERE created_by = %(id)s", {"id": user_id})
