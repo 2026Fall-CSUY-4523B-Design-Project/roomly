@@ -23,9 +23,9 @@ script/frontend.sh start   # serve a previous build (prod)
 
 ```
 frontend/
-  pages/       _app.js (providers + CSS), index.js (dashboard), sign-in.js, sign-up.js
-  components/  Header, AuthForm, FilterPanel, ListingCard
-  lib/         api.js (HTTP), auth.js (session), format.js (display helpers)
+  pages/       _app.js (providers + CSS), index.js (dashboard), sign-in.js, sign-up.js, verify-email.js, forgot-password.js, reset-password.js
+  components/  Header, AuthForm, AuthPage, ResendVerification, FilterPanel, ListingCard
+  lib/         api.js (HTTP), auth.js (session), token.js (emailed-link token), format.js (display helpers)
   styles/      globals.css — the whole stylesheet
   next.config.js  /api/* rewrite; jsconfig.json  @/* → frontend/
 ```
@@ -34,7 +34,7 @@ frontend/
 
 ## Status
 
-Implemented against the real API: search/dashboard (UC-3), sign-up, sign-in, sign-out, session
+Implemented against the real API: search/dashboard (UC-3), sign-up with email confirmation, sign-in, password reset, sign-out, session
 restore. The backend now implements every use case, but the frontend has not caught up: compare,
 groups, notifications and the listing detail page have no route yet and 404, and those links are
 placeholders for later slices.

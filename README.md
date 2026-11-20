@@ -77,6 +77,9 @@ Copy [.env.example](.env.example) and export it, or set the variables in your de
 | `DATABASE_URL` | `postgresql://roomly@127.0.0.1:5433/postgres` in dev | required in prod; `sqlite:///path` = SQLite only |
 | `ROOMLY_SQLITE_FALLBACK` | `db/roomly.sqlite3` in dev, off in prod | SQLite file used when Postgres is unreachable at startup; `off` disables |
 | `ROOMLY_MIGRATIONS_DIR` | repo `db/migrations` | set it when running from installed wheels (the release ships `roomly-db-<v>.tar.gz`) |
+| `ROOMLY_MAIL` | `log` in dev, `http` in prod | `log` writes verification and reset links to the backend log; `http` posts to the mail Worker (prod refuses `log`) |
+| `ROOMLY_MAIL_URL` / `ROOMLY_MAIL_SECRET` | none | required when `ROOMLY_MAIL=http`: the Worker's base URL and the secret both sides sign with |
+| `ROOMLY_APP_URL` | `http://localhost:3000` | site URL used in the links the `log` mailer prints |
 | `ROOMLY_API_URL` | `http://127.0.0.1:8000` | frontend rewrite target, read by `next.config.js` at build/start |
 
 ## Testing
@@ -91,7 +94,10 @@ The Postgres runs use a throwaway `roomly_test` database (`ROOMLY_TEST_DATABASE_
 
 ## Account authentication
 
-Sign up at `/sign-up` or sign in at `/sign-in`; the header shows the account and a sign-out button.
+Sign up at `/sign-up`, confirm the address with the emailed link, then sign in at `/sign-in`; the
+header shows the account and a sign-out button. Sign-in is refused until the address is confirmed.
+`/forgot-password` emails a reset link that signs the account out everywhere. In development the
+links are printed in the backend log (`ROOMLY_MAIL=log`).
 Passwords are salted scrypt, only SHA-256 hashes of bearer tokens are stored, sessions last seven
 days, and sign-out revokes the current session. The browser keeps the token in per-tab
 `sessionStorage` and restores it through `GET /me`; closing the tab clears storage but not the

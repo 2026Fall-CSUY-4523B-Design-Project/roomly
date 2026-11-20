@@ -26,6 +26,18 @@ All notable changes to this project are documented here, following [Keep a Chang
 - Browser sign-up/sign-in forms, per-tab session restoration, expiry handling, and account navigation.
 - HTTP authentication tests on PostgreSQL and SQLite, including concurrent duplicate sign-ups.
 
+- Email confirmation and password reset: sign-up emails a 24-hour single-use link and creates no
+  session, sign-in is refused (`403`, `email_not_verified`) until it is opened, and
+  `/forgot-password` sends a 30-minute reset link that signs the account out everywhere. Links are
+  stored as SHA-256 hashes and limited to one a minute and three an hour per account. Migration
+  `0002_auth_email` (both engines) adds `email_verified_at`, marks existing accounts verified, and
+  creates `auth_token`.
+- `ROOMLY_MAIL`, `ROOMLY_MAIL_URL`, `ROOMLY_MAIL_SECRET`, `ROOMLY_APP_URL`: production sends through
+  a signed HTTP call to the mail Worker; development logs the links.
+
+### Changed
+- `POST /auth/sign-up` answers `201 {email, verification_sent}` instead of a session.
+
 ### Removed
 - Fixture mode (`ROOMLY_FIXTURES`, `roomly/fixtures.py` and the 501 responses): every endpoint now
   returns real data, so the development-only sample responses are gone.

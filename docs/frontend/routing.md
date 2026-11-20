@@ -7,7 +7,10 @@ and imports `styles/globals.css` — that is the only place global CSS is loaded
 | --- | --- | --- |
 | `/` | `pages/index.js` | Dashboard: filters + matching listings (UC-3, R-3.1). Guests allowed. |
 | `/sign-in` | `pages/sign-in.js` | `<AuthForm />` |
-| `/sign-up` | `pages/sign-up.js` | `<AuthForm signUp />` |
+| `/sign-up` | `pages/sign-up.js` | `<AuthForm signUp />`; success shows "Check your email" (no session yet) |
+| `/verify-email` | `pages/verify-email.js` | target of the emailed link; confirms once on load |
+| `/forgot-password` | `pages/forgot-password.js` | asks for a reset link |
+| `/reset-password` | `pages/reset-password.js` | target of the reset link; chooses a new password |
 
 No other routes exist. `Header` links to `/compare`, `/groups` and `/notifications`, and
 `ListingCard` links to `/listings/<id>`; all four 404 until those slices land. When adding one, add

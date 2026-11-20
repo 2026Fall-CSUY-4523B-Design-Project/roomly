@@ -12,6 +12,7 @@ from roomly.service.admin_service import AdminService
 from roomly.service.comparison_service import ComparisonService
 from roomly.service.group_service import GroupService
 from roomly.service.listing_service import ListingService
+from roomly.service.mailer import Mailer
 from roomly.service.notification_service import NotificationService
 from roomly.service.room_service import RoomService
 from roomly.service.search_service import SearchService
@@ -29,9 +30,9 @@ class Services:
     notification: NotificationService
 
     @classmethod
-    def build(cls, db: Database) -> Services:
+    def build(cls, db: Database, mailer: Mailer | None = None) -> Services:
         return cls(
-            account=AccountService(db),
+            account=AccountService(db, mailer),
             group=GroupService(db),
             listing=ListingService(db),
             admin=AdminService(db),

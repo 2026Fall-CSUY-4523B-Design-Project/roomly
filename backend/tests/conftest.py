@@ -10,6 +10,7 @@ locally and fail in CI. SQLite uses a temporary file. Every table is emptied bef
 import os
 from collections.abc import Iterator
 from contextlib import closing
+from urllib.parse import quote
 
 import psycopg
 import pytest
@@ -19,6 +20,7 @@ from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from roomly.config import Settings
 from roomly.db import Database
 from roomly.db.backend import SqliteBackend
+from roomly.service.mailer import MailError, Message
 
 TEST_DATABASE_URL = os.environ.get("ROOMLY_TEST_DATABASE_URL", "postgresql://roomly@127.0.0.1:5433/roomly_test")
 MIGRATIONS = Settings.from_env({}).migrations_dir
@@ -73,3 +75,32 @@ def db(database: Database) -> Database:
                 sql.SQL(", ").join(map(sql.Identifier, tables))))
     return database
 
+
+
+class MemoryMailer:
+    """Collects what the API would have emailed. ``fail`` makes every send raise like a dead mail service."""
+
+    def __init__(self) -> None:
+        self.sent: list[Message] = []
+        self.fail = False
+
+    def send(self, message: Message) -> None:
+        if self.fail:
+            raise MailError("mail service is down")
+        self.sent.append(message)
+
+    def last(self, template: str, to: str | None = None) -> Message:
+        matches = [m for m in self.sent if m.template == template and to in (None, m.to)]
+        assert matches, f"no {template} mail sent to {to}; sent: {[(m.template, m.to) for m in self.sent]}"
+        return matches[-1]
+
+
+@pytest.fixture
+def mailer() -> MemoryMailer:
+    return MemoryMailer()
+
+
+def link(message: Message) -> str:
+    """The URL path the Worker puts in the email, for tests that follow it."""
+    page = {"verify_email": "verify-email", "reset_password": "reset-password"}[message.template]
+    return f"/{page}?token={quote(message.token)}"

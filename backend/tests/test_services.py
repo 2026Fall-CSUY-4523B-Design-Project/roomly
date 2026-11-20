@@ -1,16 +1,22 @@
 """The service layer through HTTP, on both database engines.
 
-Each test signs up real accounts and exercises the endpoints the way a client does; the
-database invariants are covered separately by test_schema.
+Each test creates verified accounts (sign-up and email confirmation have their own tests in
+test_auth and test_auth_email) and exercises the endpoints the way a client does; the database
+invariants are covered separately by test_schema.
 """
+
+import datetime as dt
+import secrets
 
 import pytest
 from fastapi.testclient import TestClient
 
 from roomly.config import Settings
+from roomly.dto.account import UserDTO
 from roomly.main import create_app
-from roomly.mapper.account_mapper import UserMapper
+from roomly.mapper.account_mapper import SessionMapper, UserMapper
 from roomly.mapper.listing_mapper import ListingMapper
+from roomly.service.account_service import password_hash, token_hash
 
 pytestmark = pytest.mark.integration
 PASSWORD = "correct horse battery"
@@ -22,10 +28,12 @@ def client(db):
 
 
 def account(client, email):
-    response = client.post("/auth/sign-up", json={"email": email, "password": PASSWORD, "display_name": email[:6]})
-    assert response.status_code == 201, response.text
-    session = response.json()
-    return {"Authorization": f"Bearer {session['token']}"}, session["user"]
+    """A verified account with a live session, made directly so the suite pays for one scrypt per account."""
+    token = secrets.token_urlsafe(32)
+    with client.app.state.database.transaction() as tx:
+        user = UserMapper(tx).insert(email, password_hash(PASSWORD), email[:6], verified=True)
+        SessionMapper(tx).insert(user.id, token_hash(token), dt.datetime.now(dt.UTC) + dt.timedelta(days=1))
+    return {"Authorization": f"Bearer {token}"}, UserDTO.from_entity(user).model_dump(mode="json")
 
 
 def listing(client, headers, **overrides):

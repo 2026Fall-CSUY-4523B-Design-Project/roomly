@@ -27,6 +27,7 @@ in CI.
 | --- | --- |
 | `test_services` | every use case through HTTP: groups, listings, admin review, search, comparison, rooms, notifications, account deletion |
 | `test_auth` | the account lifecycle and sessions, on both engines |
+| `test_auth_email` | email confirmation, password reset, send throttling, mail failures, the mail client's signature, the 0002 backfill |
 | `test_dto` | validation rules, 422 locations, the OpenAPI document |
 | `test_schema` | DDL invariants, on both engines |
 | `test_database` | primary/fallback selection |
