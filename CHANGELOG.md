@@ -5,6 +5,23 @@ All notable changes to this project are documented here, following [Keep a Chang
 ## [Unreleased]
 
 ### Added
+- Continuous deployment off a `v*` tag: the tests run, both images are pushed to ghcr.io, the mail
+  Worker is deployed, and the host is asked to `deploy <tag>` over an ssh key that can run nothing
+  else. There is no approval step; the tag is the deploy. `ci.yml` also builds both images and starts
+  the production compose stack on every pull request, so a broken Dockerfile or compose file fails
+  before the tag does.
+- `backend/Dockerfile`, `frontend/Dockerfile`, `deploy/docker-compose.yml`: the API and the frontend
+  as unprivileged, read-only containers beside PostgreSQL, with migrations baked into the API image.
+- `deploy/test-deploy.sh` runs `deploy.sh` against fake docker/curl: argument refusal, success, failed
+  pull, each health check failing, and rollback.
+- `deploy/deploy.sh`: the host half of a deploy — argument check, `compose pull`, `up -d`, health
+  checks through both the API and the frontend, and an automatic rollback to the previous tag.
+- `mail/`: the Cloudflare Worker behind `mail.roomly.bid`. `POST /v1/send` renders verification and
+  password-reset mail and requires an HMAC over the timestamp and body; Email Routing inbound mail
+  is forwarded to the support inbox and bounces are dropped. Vitest covers signing, templates and
+  routing without a Cloudflare account.
+- `docs/deploy.md` covering the host, Cloudflare DNS and mail setup, the deploy key, rollback, and
+  what a compromised container can and cannot reach.
 - `docs/frontend/` covering routing, API access, authentication and UI conventions.
 - `docs/backend/` split into layers, database, endpoints and traceability; `docs/backend.md` is gone
   and the README is trimmed to the shared setup and links to both doc sets.

@@ -1,0 +1,6 @@
+# Local values for `wrangler dev`. Copy to .dev.vars (gitignored) and adjust.
+# The API signs requests with this secret, so use the same value in the backend's env file.
+MAIL_SECRET=dev-secret
+# console prints the rendered message instead of calling Email Service
+MAIL_TRANSPORT=console
+MAIL_ALLOWED_RECIPIENTS=
