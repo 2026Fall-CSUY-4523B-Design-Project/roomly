@@ -9,7 +9,7 @@ inputs:
     description: Shared HMAC secret the API signs with
     required: true
   api-token:
-    description: Cloudflare API token (Workers Scripts and Routes edit)
+    description: Cloudflare API token (Workers Scripts, D1, Workers Routes and DNS edit)
     required: true
   account-id:
     description: Cloudflare account id
@@ -32,6 +32,16 @@ runs:
       shell: bash
       working-directory: mail
       run: pnpm install --frozen-lockfile
+
+    # The code expects the tables, so migrate before the new version goes live. Migrations are
+    # additive and idempotent per file (D1 records what ran); a failure here stops the deploy.
+    - name: Migrate the inbox database
+      shell: bash
+      working-directory: mail
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+      run: pnpm exec wrangler d1 migrations apply DB --remote --env "${{ inputs.environment }}"
 
     # Deploy first: `wrangler secret bulk` needs a Worker that already exists. The endpoint answers
     # not_configured until the secret lands, which is a few seconds on a first deploy only.

@@ -52,6 +52,12 @@ All notable changes to this project are documented here, following [Keep a Chang
 - `ROOMLY_MAIL`, `ROOMLY_MAIL_URL`, `ROOMLY_MAIL_SECRET`, `ROOMLY_APP_URL`: production sends through
   a signed HTTP call to the mail Worker; development logs the links.
 
+- Support inbox at `https://mail.roomly.bid/`: every message sent to any `@roomly.bid` address is
+  parsed and stored in D1 and shown in a password-protected web inbox (list, search, per-recipient
+  filter, read, delete). Plain text only, a strict CSP, a signed session cookie, a login throttle and a
+  daily purge of mail older than 90 days. Forwarding to a private mailbox (`SUPPORT_INBOX`) is now optional.
+- The mail deploy action applies D1 migrations before each deploy.
+
 ### Fixed
 - Mail Worker: Reply-To is the public `SUPPORT_ADDRESS`; inbound mail is forwarded to a private
   `SUPPORT_INBOX` Worker secret (it used to forward `support@roomly.bid` to itself).

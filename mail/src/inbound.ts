@@ -1,6 +1,7 @@
 /**
- * Inbound mail routing. Email Routing hands every message for the zone to this Worker, including
- * bounces and DMARC reports, so the decision is explicit instead of "forward everything to a human".
+ * Whether an inbound message is also forwarded to a private mailbox. Email Routing hands every
+ * message for the zone to this Worker, including bounces and DMARC reports; the inbox stores them
+ * all, and this decides which ones are worth a human's personal mailbox.
  */
 
 export type InboundDecision =

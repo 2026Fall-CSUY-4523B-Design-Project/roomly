@@ -23,7 +23,21 @@ export interface InboundEmail {
   readonly to: string;
   readonly rawSize: number;
   readonly headers: Headers;
+  readonly raw: ReadableStream<Uint8Array>;
   forward(to: string): Promise<void>;
+  setReject(reason: string): void;
+}
+
+/** The slice of the D1 API the inbox uses. */
+export interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  run(): Promise<{ meta: { changes: number } }>;
+  all<T = Record<string, unknown>>(): Promise<{ results: T[] }>;
+  first<T = Record<string, unknown>>(): Promise<T | null>;
+}
+
+export interface D1Database {
+  prepare(sql: string): D1PreparedStatement;
 }
 
 export interface Env {
@@ -43,6 +57,12 @@ export interface Env {
    * is logged and dropped.
    */
   SUPPORT_INBOX?: string;
+  /** The inbox database (D1). Without it the web inbox is off and inbound mail is only forwarded. */
+  DB?: D1Database;
+  /** Password for the web inbox. A Worker secret; unset keeps the inbox login closed. */
+  INBOX_PASSWORD?: string;
+  /** Signs the inbox session cookie. A Worker secret, any long random string. */
+  INBOX_SESSION_KEY?: string;
   /** Comma-separated allowlist; when set, sends to anything else are rejected. Staging only. */
   MAIL_ALLOWED_RECIPIENTS?: string;
   /** `email` (default) sends through the binding; `console` prints for local runs. */

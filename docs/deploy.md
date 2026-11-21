@@ -150,10 +150,10 @@ keeps the origin from being reached directly.
    _dmarc.roomly.bid  TXT  "v=DMARC1; p=none; rua=mailto:dmarc@roomly.bid; adkim=r; aspf=r"
    ```
 
-6. Email Routing: enable it, then route `support@roomly.bid` and `dmarc@roomly.bid` to the
-   **roomly-mail** Worker. No catch-all: the CLI can only forward or drop there, and other
-   addresses should not be accepted. Deploy the Worker first; there is nothing to route to until it
-   exists:
+6. Email Routing: enable it and send everything to the **roomly-mail** Worker, which stores it in
+   the support inbox. Deploy the Worker first; there is nothing to route to until it exists. The
+   CLI cannot point the catch-all at a Worker, so that one rule is set in the dashboard (Email →
+   Email Routing → Routing rules → catch-all → Send to a Worker → `roomly-mail`, then enable it):
 
    ```sh
    wrangler email routing enable roomly.bid
@@ -163,17 +163,42 @@ keeps the origin from being reached directly.
        --action-type worker --action-value roomly-mail
    done
    ```
- The Worker forwards support mail to `SUPPORT_INBOX`: a real mailbox outside the
-   domain, added under Email Routing → Destination addresses and verified. It is a Worker secret
-   because this repository is public, and it must not be `support@roomly.bid` (that would forward
-   to itself):
+
+   With the catch-all on, any `@roomly.bid` address works for a demo and lands in the inbox; turn the
+   catch-all back to "Drop" when that is no longer wanted.
+
+   `SUPPORT_ADDRESS` (the public `support@roomly.bid`) is a plain var, the Reply-To of outbound mail.
+   `SUPPORT_INBOX` is optional: a real mailbox outside the domain (verified under Email Routing →
+   Destination addresses) that also gets a forwarded copy of human mail. It is a Worker secret because
+   this repository is public, and it must not be an `@roomly.bid` address (that would forward to
+   itself):
 
    ```sh
-   pnpm exec wrangler secret put SUPPORT_INBOX --env production   # in mail/
+   pnpm exec wrangler secret put SUPPORT_INBOX --env production   # in mail/, optional
    ```
 
-   `SUPPORT_ADDRESS` (the public `support@roomly.bid`) is a plain var; it is the Reply-To of
-   outbound mail. With `SUPPORT_INBOX` unset, inbound mail is logged and dropped.
+## The support inbox
+
+`https://mail.roomly.bid/` is a small web inbox on the same Worker: every message Email Routing
+delivers is parsed and stored in D1 (`roomly-mail`; `roomly-mail-staging` for staging), newest first,
+with search and a per-recipient filter. It shows plain text only: HTML bodies are reduced to text and
+attachments are counted but not kept, and a strict CSP means a hostile message cannot run anything.
+Mail older than 90 days is deleted by a daily cron.
+
+Access is one shared password and a signed, `HttpOnly`, `SameSite=Strict` cookie that lasts 12 hours;
+five wrong passwords from one address lock it out for 15 minutes. Both are Worker secrets, so the
+inbox stays closed (503) until they are set:
+
+```sh
+cd mail
+openssl rand -base64 18 | tr -d '/+=' | pnpm exec wrangler secret put INBOX_PASSWORD --env production
+openssl rand -hex 32                  | pnpm exec wrangler secret put INBOX_SESSION_KEY --env production
+```
+
+Rotate the password by putting a new `INBOX_PASSWORD`; rotating `INBOX_SESSION_KEY` signs everyone out.
+The schema is `mail/migrations/`; CI runs `wrangler d1 migrations apply` before every deploy, so add a
+new numbered file for each change and never edit one that has shipped.
+
 7. ghcr: both packages (`roomly-api`, `roomly-web`) must be **public**, otherwise the host needs a
    registry credential. A package exists only after its first push, so the first tag's deploy step
    fails on `pull`; then make both public (Packages → the package → Package settings → Change
@@ -190,7 +215,7 @@ Repository secrets:
 | `DEPLOY_USER` | `roomly-deploy` |
 | `DEPLOY_SSH_KEY` | private key, full contents |
 | `DEPLOY_KNOWN_HOSTS` | `[<host>]:2222 <contents of /etc/ssh/ssh_host_ed25519_key.pub>`, taken from the host itself rather than scanned over the network |
-| `CLOUDFLARE_API_TOKEN` | Account → Workers Scripts: Edit; Zone (`roomly.bid`) → Workers Routes: Edit, DNS: Edit |
+| `CLOUDFLARE_API_TOKEN` | Account → Workers Scripts: Edit, D1: Edit; Zone (`roomly.bid`) → Workers Routes: Edit, DNS: Edit |
 | `CLOUDFLARE_ACCOUNT_ID` | Workers overview in the dashboard |
 | `MAIL_SECRET` | `openssl rand -hex 32`; the same value as `ROOMLY_MAIL_SECRET` in `/srv/roomly/.env` |
 
