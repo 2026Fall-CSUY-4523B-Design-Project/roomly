@@ -34,8 +34,15 @@ export interface Env {
   APP_URL: string;
   /** Envelope sender, e.g. `Roomly <no-reply@roomly.bid>`. Must be on the onboarded domain. */
   MAIL_FROM: string;
-  /** Where inbound mail (support, replies, DMARC reports) is forwarded. */
-  SUPPORT_INBOX: string;
+  /** The public address people write to, e.g. `support@roomly.bid`. Used as Reply-To on outbound mail. */
+  SUPPORT_ADDRESS: string;
+  /**
+   * Where inbound mail (support, replies, DMARC reports) is forwarded: a real mailbox outside the
+   * domain that is a verified destination in Email Routing. Private, so it is a Worker secret
+   * (`wrangler secret put SUPPORT_INBOX`) and never in this public repository. Unset = inbound mail
+   * is logged and dropped.
+   */
+  SUPPORT_INBOX?: string;
   /** Comma-separated allowlist; when set, sends to anything else are rejected. Staging only. */
   MAIL_ALLOWED_RECIPIENTS?: string;
   /** `email` (default) sends through the binding; `console` prints for local runs. */

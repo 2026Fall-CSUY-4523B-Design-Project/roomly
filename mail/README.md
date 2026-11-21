@@ -5,7 +5,7 @@ The Cloudflare Worker behind `mail.roomly.bid`. It does two jobs:
 - **Outbound.** `POST /v1/send` renders one of the transactional templates and hands it to the
   Email Service `send_email` binding. The API signs each request; nothing else can use the endpoint.
 - **Inbound.** Email Routing delivers every message addressed to `@roomly.bid` to the Worker's
-  `email()` handler. Support mail is forwarded to `SUPPORT_INBOX`; bounces and DMARC traffic are
+  `email()` handler. Support mail is forwarded to `SUPPORT_INBOX` (a private mailbox, set as a Worker secret); bounces and DMARC traffic are
   dropped or forwarded by the rules in `src/inbound.ts`.
 
 Deployment, DNS and secrets are in [../docs/deploy.md](../docs/deploy.md).

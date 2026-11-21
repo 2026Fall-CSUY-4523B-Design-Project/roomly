@@ -122,7 +122,7 @@ export async function handleRequest(
       subject: rendered.subject,
       html: rendered.html,
       text: rendered.text,
-      replyTo: env.SUPPORT_INBOX,
+      replyTo: env.SUPPORT_ADDRESS,
     });
     return json(202, { transport: "email", template, to: recipient, id: result.messageId });
   } catch (error) {
@@ -134,7 +134,7 @@ export async function handleRequest(
 }
 
 export async function handleEmail(message: InboundEmail, env: Env): Promise<void> {
-  const decision = decideInbound(message.to, env.SUPPORT_INBOX);
+  const decision = decideInbound(message.to, env.SUPPORT_INBOX ?? "");
   if (decision.action === "drop") {
     console.log(JSON.stringify({ event: "inbound_dropped", to: message.to, from: message.from, reason: decision.reason }));
     return;
