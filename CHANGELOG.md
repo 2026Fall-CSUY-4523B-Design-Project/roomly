@@ -38,6 +38,8 @@ All notable changes to this project are documented here, following [Keep a Chang
 - `script/seed.sh` fills a development database with a coherent demo world (five accounts, two
   groups, four listings, a held duplicate, messages, a poll, notifications, comparisons and saved
   searches); `--reset` empties the tables first.
+- `docs/testing/uat.md`: the user acceptance test plan for major releases, covering every
+  user-facing journey, the seeded accounts, severity levels, traceability and sign-off.
 - Real sign-up, sign-in, current-account lookup, and sign-out with salted scrypt passwords,
   seven-day bearer sessions, hashed tokens, and immediate session revocation.
 - Browser sign-up/sign-in forms, per-tab session restoration, expiry handling, and account navigation.
