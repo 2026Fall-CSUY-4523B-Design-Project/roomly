@@ -4,6 +4,8 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-11-21
+
 ### Fixed
 - The API's mail client sends its own `User-Agent`; Cloudflare rejected the default Python agent with
   error 1010, so no verification or reset email was ever sent in production.
