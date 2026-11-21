@@ -1,7 +1,7 @@
 /** HTTP routes of the web inbox: /login, /logout, /inbox, /m/:id. */
 
 import type { Env } from "../env";
-import { inboxPage, loginPage, messagePage, notConfiguredPage, notFoundPage } from "./pages";
+import { errorPage, inboxPage, loginPage, messagePage, notConfiguredPage, notFoundPage } from "./pages";
 import { attemptLogin, COOKIE, issueSession, readCookie, SESSION_SECONDS, verifySession } from "./session";
 import { D1Store, type InboxStore } from "./store";
 
@@ -35,11 +35,23 @@ function sessionCookie(value: string, maxAge: number, secure: boolean): string {
   return `${COOKIE}=${value}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Strict${secure ? "; Secure" : ""}`;
 }
 
-/** A state-changing request must come from this site: SameSite=Strict covers browsers, this covers the rest. */
-function sameOrigin(request: Request): boolean {
+/**
+ * A state-changing request must come from this site. Browsers say so themselves in `Sec-Fetch-Site`
+ * (a page cannot forge it), and that is checked first: under `Referrer-Policy: no-referrer` they send
+ * `Origin: null` on same-origin form posts, which must not count against the user. Without that
+ * header (older browsers, scripts) fall back to a parseable `Origin` on this host. SameSite=Strict on
+ * the cookie is the second layer.
+ */
+export function sameOrigin(request: Request): boolean {
+  const site = request.headers.get("sec-fetch-site");
+  if (site) return site === "same-origin";
   const origin = request.headers.get("origin");
-  if (origin) return new URL(origin).host === new URL(request.url).host;
-  return request.headers.get("sec-fetch-site") === "same-origin";
+  if (!origin || origin === "null") return false;
+  try {
+    return new URL(origin).host === new URL(request.url).host;
+  } catch {
+    return false;
+  }
 }
 
 async function form(request: Request): Promise<URLSearchParams | null> {
@@ -49,8 +61,22 @@ async function form(request: Request): Promise<URLSearchParams | null> {
   return text.length > MAX_FORM_BYTES ? null : new URLSearchParams(text);
 }
 
-/** `null` when the path is not an inbox route, so the caller can answer 404. */
+/** `null` when the path is not an inbox route, so the caller can answer 404. Never throws. */
 export async function handleInbox(
+  request: Request,
+  env: Env,
+  nowSeconds: number = Math.floor(Date.now() / 1000),
+  store: InboxStore | undefined = env.DB ? new D1Store(env.DB) : undefined,
+): Promise<Response | null> {
+  try {
+    return await route(request, env, nowSeconds, store);
+  } catch (error) {
+    console.error(JSON.stringify({ event: "inbox_error", path: new URL(request.url).pathname, message: String(error) }));
+    return html(500, errorPage());
+  }
+}
+
+async function route(
   request: Request,
   env: Env,
   nowSeconds: number = Math.floor(Date.now() / 1000),

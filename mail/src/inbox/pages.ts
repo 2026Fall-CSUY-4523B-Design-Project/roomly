@@ -57,6 +57,10 @@ export function notConfiguredPage(): string {
   return layout("Not configured", `<div class="card"><p>The inbox is not configured on this Worker yet.</p></div>`, false);
 }
 
+export function errorPage(): string {
+  return layout("Error", `<div class="card"><p class="error">Something went wrong. Try again in a moment.</p><p><a href="/inbox">← Inbox</a></p></div>`, false);
+}
+
 export function notFoundPage(): string {
   return layout("Not found", `<p><a href="/inbox">← Inbox</a></p><div class="card"><p>Nothing here.</p></div>`, true);
 }

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Env, InboundEmail } from "../src/env";
 import { handleEmail, handleRequest, handleScheduled, RETENTION_DAYS } from "../src/index";
 import { htmlToText, MAX_BODY_CHARS, MAX_PARSE_BYTES, toStoredMessage } from "../src/inbox/ingest";
-import { handleInbox, PAGE_SIZE } from "../src/inbox/routes";
+import { handleInbox, PAGE_SIZE, sameOrigin } from "../src/inbox/routes";
 import { COOKIE, issueSession, MAX_FAILURES, verifySession } from "../src/inbox/session";
 import { D1Store, type StoredMessage } from "../src/inbox/store";
 import { memoryD1 } from "./d1";
@@ -220,6 +220,31 @@ describe("web inbox", () => {
     const forged = await handleInbox(new Request(`${BASE}/m/${m.id}/delete`, { method: "POST", headers: { cookie, origin: "https://evil.example" } }), env, NOW);
     expect(forged?.status).toBe(403);
     expect(await store.get(m.id)).not.toBeNull();
+  });
+
+  it("accepts a same-origin form post whose Origin is null, as browsers send under no-referrer", async () => {
+    const { env } = makeEnv();
+    const post = (headers: Record<string, string>) => handleInbox(new Request(`${BASE}/login`, {
+      method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", ...headers },
+      body: new URLSearchParams({ password: PASSWORD }).toString(),
+    }), env, NOW);
+    expect((await post({ origin: "null", "sec-fetch-site": "same-origin" }))?.status).toBe(303);
+    expect((await post({ origin: BASE, "sec-fetch-site": "cross-site" }))?.status).toBe(403);
+    expect((await post({ "sec-fetch-site": "same-site" }))?.status).toBe(403);
+    // No Fetch Metadata at all: only a parseable Origin on this host passes, and nothing throws.
+    expect((await post({ origin: "null" }))?.status).toBe(403);
+    expect((await post({ origin: "not a url" }))?.status).toBe(403);
+    expect((await post({}))?.status).toBe(403);
+    expect(sameOrigin(new Request(`${BASE}/x`, { method: "POST", headers: { origin: BASE } }))).toBe(true);
+  });
+
+  it("turns an unexpected failure into a logged 500 page, never an exception", async () => {
+    const { env } = makeEnv();
+    const broken = { ...new D1Store(env.DB!), list: () => { throw new Error("D1 down"); } } as unknown as D1Store;
+    const { cookie } = await loginCookie(env);
+    const response = await handleInbox(new Request(`${BASE}/inbox`, { headers: { cookie } }), env, NOW, broken);
+    expect(response?.status).toBe(500);
+    expect(await response?.text()).toContain("Something went wrong");
   });
 
   it("lists mail, escapes every hostile value and sends a strict CSP", async () => {
