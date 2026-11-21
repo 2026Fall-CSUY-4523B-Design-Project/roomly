@@ -4,6 +4,11 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
+### Fixed
+- The API's mail client sends its own `User-Agent`; Cloudflare rejected the default Python agent with
+  error 1010, so no verification or reset email was ever sent in production.
+- `deploy/deploy.sh` and `deploy/deploy-to-host.sh` are executable in git, and `test-deploy.sh` checks it.
+
 ## [2.2.0] - 2026-11-20
 
 First production release: accounts confirm their email, the stack deploys itself from a tag, and

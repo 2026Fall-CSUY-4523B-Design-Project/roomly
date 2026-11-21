@@ -372,6 +372,13 @@ def test_http_mailer_signs_the_way_the_worker_verifies(worker):
     assert request["headers"]["X-Roomly-Signature"] == f"v1={expected}"
 
 
+def test_http_mailer_names_itself_instead_of_the_default_python_agent(worker):
+    # Cloudflare blocks "Python-urllib/..." with error 1010 before the Worker sees the request.
+    url, state = worker
+    HttpMailer(url, "s").send(Message("verify_email", EMAIL, "T" * 43))
+    assert state.seen[0]["headers"]["User-Agent"] == "roomly-api"
+
+
 def test_http_mailer_omits_a_missing_display_name(worker):
     url, state = worker
     HttpMailer(url, "s").send(Message("reset_password", EMAIL, "T" * 43))
