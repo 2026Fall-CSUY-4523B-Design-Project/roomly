@@ -11,6 +11,9 @@
 
 import type { Env, InboundEmail } from "./env";
 import { decideInbound } from "./inbound";
+import { handleInbox } from "./inbox/routes";
+import { toStoredMessage } from "./inbox/ingest";
+import { D1Store } from "./inbox/store";
 import { verifySignature } from "./sign";
 import { isTemplateName, render, TemplateProblemError } from "./templates";
 
@@ -51,7 +54,10 @@ export async function handleRequest(
     });
   }
 
-  if (pathname !== "/v1/send") return fail(404, "not_found", "Unknown route.");
+  if (pathname !== "/v1/send") {
+    const inbox = await handleInbox(request, env, nowSeconds);
+    return inbox ?? fail(404, "not_found", "Unknown route.");
+  }
   if (request.method !== "POST") return fail(405, "method_not_allowed", "Use POST.");
   if (!env.MAIL_SECRET) return fail(500, "not_configured", "MAIL_SECRET is not set.");
 
@@ -134,18 +140,45 @@ export async function handleRequest(
 }
 
 export async function handleEmail(message: InboundEmail, env: Env): Promise<void> {
+  // The inbox keeps every message sent to the domain (the catch-all routes here), so the demo can
+  // show any address receiving mail; forwarding to a private mailbox is optional on top of that.
+  let stored = false;
+  if (env.DB) {
+    try {
+      await new D1Store(env.DB).insert(await toStoredMessage(message));
+      stored = true;
+      console.log(JSON.stringify({ event: "inbound_stored", to: message.to, from: message.from, size: message.rawSize }));
+    } catch (error) {
+      console.error(JSON.stringify({ event: "inbound_store_failed", to: message.to, message: String(error) }));
+    }
+  }
+
   const decision = decideInbound(message.to, env.SUPPORT_INBOX ?? "");
-  if (decision.action === "drop") {
-    console.log(JSON.stringify({ event: "inbound_dropped", to: message.to, from: message.from, reason: decision.reason }));
-    return;
+  if (decision.action === "forward") {
+    try {
+      await message.forward(decision.to);
+      console.log(JSON.stringify({ event: "inbound_forwarded", to: message.to, from: message.from, target: decision.to }));
+      return;
+    } catch (error) {
+      // Accepting and logging beats rejecting: a bounce only tells the sender we are broken.
+      console.error(JSON.stringify({ event: "inbound_forward_failed", to: message.to, message: String(error) }));
+    }
+  } else {
+    console.log(JSON.stringify({ event: "inbound_not_forwarded", to: message.to, from: message.from, reason: decision.reason }));
   }
-  try {
-    await message.forward(decision.to);
-    console.log(JSON.stringify({ event: "inbound_forwarded", to: message.to, from: message.from, target: decision.to }));
-  } catch (error) {
-    // Accepting and logging beats rejecting: a bounce only tells the sender we are broken.
-    console.error(JSON.stringify({ event: "inbound_forward_failed", to: message.to, message: String(error) }));
-  }
+
+  // Neither stored nor forwarded: ask the sender's server to retry rather than lose the message.
+  if (!stored && env.DB) message.setReject("Temporary failure, please try again later.");
+}
+
+/** Daily: drop mail older than the retention window and stale login-failure rows. */
+export const RETENTION_DAYS = 90;
+
+export async function handleScheduled(env: Env, now: Date = new Date()): Promise<void> {
+  if (!env.DB) return;
+  const iso = new Date(now.getTime() - RETENTION_DAYS * 86_400_000).toISOString();
+  const removed = await new D1Store(env.DB).purgeOlderThan(iso, Math.floor(now.getTime() / 1000) - 86_400);
+  console.log(JSON.stringify({ event: "inbox_purged", removed, olderThan: iso }));
 }
 
 export default {
@@ -154,5 +187,8 @@ export default {
   },
   email(message: InboundEmail, env: Env): Promise<void> {
     return handleEmail(message, env);
+  },
+  scheduled(_controller: unknown, env: Env): Promise<void> {
+    return handleScheduled(env);
   },
 };

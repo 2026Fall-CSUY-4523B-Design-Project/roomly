@@ -5,8 +5,11 @@ The Cloudflare Worker behind `mail.roomly.bid`. It does two jobs:
 - **Outbound.** `POST /v1/send` renders one of the transactional templates and hands it to the
   Email Service `send_email` binding. The API signs each request; nothing else can use the endpoint.
 - **Inbound.** Email Routing delivers every message addressed to `@roomly.bid` to the Worker's
-  `email()` handler. Support mail is forwarded to `SUPPORT_INBOX` (a private mailbox, set as a Worker secret); bounces and DMARC traffic are
-  dropped or forwarded by the rules in `src/inbound.ts`.
+  `email()` handler, which stores it in D1. Human mail is also forwarded to `SUPPORT_INBOX` when that
+  optional secret is set; bounces and DMARC traffic are not (`src/inbound.ts`).
+- **Inbox.** `https://mail.roomly.bid/` is a password-protected web inbox over the stored mail
+  (`src/inbox/`): list, search, per-recipient filter, read, delete. Plain text only. `INBOX_AUTH=off`
+  turns it into an open, read-only demo inbox.
 
 Deployment, DNS and secrets are in [../docs/deploy.md](../docs/deploy.md).
 
@@ -16,8 +19,10 @@ Deployment, DNS and secrets are in [../docs/deploy.md](../docs/deploy.md).
 src/index.ts      fetch + email handlers, request validation, error codes
 src/sign.ts       HMAC-SHA256 over `<timestamp>.<body>`, five-minute window
 src/templates.ts  verify_email / reset_password, text and HTML
-src/inbound.ts    which inbound mail reaches a person
-test/             vitest, no network and no Cloudflare account needed
+src/inbound.ts    which inbound mail is also forwarded to a private mailbox
+src/inbox/        D1 store, MIME ingest, login session, pages and routes of the web inbox
+migrations/       D1 schema, applied by `wrangler d1 migrations apply`
+test/             vitest, no network and no Cloudflare account needed (inbox SQL runs on node:sqlite)
 ```
 
 ## API

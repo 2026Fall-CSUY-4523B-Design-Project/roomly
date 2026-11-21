@@ -179,9 +179,11 @@ describe("handleEmail", () => {
       to,
       rawSize: 1024,
       headers: new Headers(),
+      raw: new Response("Subject: hi\r\n\r\nhello").body as ReadableStream<Uint8Array>,
       forward: async (target) => {
         forwarded.push(target);
       },
+      setReject: () => {},
     };
     return { message, forwarded };
   }

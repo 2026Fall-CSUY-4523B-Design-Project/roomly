@@ -4,3 +4,7 @@ MAIL_SECRET=dev-secret
 # console prints the rendered message instead of calling Email Service
 MAIL_TRANSPORT=console
 MAIL_ALLOWED_RECIPIENTS=
+# The web inbox stays closed (503) without both of these; any strings work locally.
+# INBOX_AUTH=off opens the inbox without a login, read-only (demo mode)
+INBOX_PASSWORD=dev-password
+INBOX_SESSION_KEY=dev-session-key

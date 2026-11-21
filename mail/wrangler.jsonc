@@ -10,6 +10,8 @@
       "allowed_sender_addresses": ["no-reply@roomly.bid"]
     }
   ],
+  "d1_databases": [{ "binding": "DB", "database_name": "roomly-mail", "database_id": "c9d62d3a-6b92-47be-b538-6b996c8ff4be" }],
+  "triggers": { "crons": ["17 4 * * *"] },
   "vars": {
     "APP_URL": "http://127.0.0.1:3000",
     "MAIL_FROM": "Roomly <no-reply@roomly.bid>",
@@ -29,6 +31,8 @@
           "allowed_sender_addresses": ["no-reply@roomly.bid"]
         }
       ],
+      "d1_databases": [{ "binding": "DB", "database_name": "roomly-mail-staging", "database_id": "0f9053d8-dc09-4ac4-9308-5d14fe7c4b60" }],
+      "triggers": { "crons": ["17 4 * * *"] },
       "vars": {
         "APP_URL": "https://staging.roomly.bid",
         "MAIL_FROM": "Roomly <no-reply@roomly.bid>",
@@ -46,10 +50,14 @@
           "allowed_sender_addresses": ["no-reply@roomly.bid"]
         }
       ],
+      "d1_databases": [{ "binding": "DB", "database_name": "roomly-mail", "database_id": "c9d62d3a-6b92-47be-b538-6b996c8ff4be" }],
+      "triggers": { "crons": ["17 4 * * *"] },
       "vars": {
         "APP_URL": "https://roomly.bid",
         "MAIL_FROM": "Roomly <no-reply@roomly.bid>",
         "SUPPORT_ADDRESS": "support@roomly.bid",
+        // Demo: the inbox is open and read-only. Delete this line to bring the password login back.
+        "INBOX_AUTH": "off",
         "MAIL_ALLOWED_RECIPIENTS": "",
         "MAIL_TRANSPORT": "email"
       }

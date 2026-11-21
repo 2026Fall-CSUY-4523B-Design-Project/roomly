@@ -17,7 +17,7 @@ function toHex(buffer: ArrayBuffer): string {
   return Array.from(new Uint8Array(buffer), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function hmac(secret: string, message: string): Promise<string> {
+export async function hmac(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(secret),
@@ -29,7 +29,7 @@ async function hmac(secret: string, message: string): Promise<string> {
 }
 
 /** Whether two hex strings are equal without an early exit on the first differing byte. */
-function sameDigest(a: string, b: string): boolean {
+export function sameDigest(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
