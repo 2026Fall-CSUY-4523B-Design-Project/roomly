@@ -13,7 +13,7 @@
   "vars": {
     "APP_URL": "http://127.0.0.1:3000",
     "MAIL_FROM": "Roomly <no-reply@roomly.bid>",
-    "SUPPORT_INBOX": "support@roomly.bid",
+    "SUPPORT_ADDRESS": "support@roomly.bid",
     "MAIL_ALLOWED_RECIPIENTS": "",
     "MAIL_TRANSPORT": "console"
   },
@@ -32,7 +32,7 @@
       "vars": {
         "APP_URL": "https://staging.roomly.bid",
         "MAIL_FROM": "Roomly <no-reply@roomly.bid>",
-        "SUPPORT_INBOX": "support@roomly.bid",
+        "SUPPORT_ADDRESS": "support@roomly.bid",
         "MAIL_ALLOWED_RECIPIENTS": "",
         "MAIL_TRANSPORT": "email"
       }
@@ -49,7 +49,7 @@
       "vars": {
         "APP_URL": "https://roomly.bid",
         "MAIL_FROM": "Roomly <no-reply@roomly.bid>",
-        "SUPPORT_INBOX": "support@roomly.bid",
+        "SUPPORT_ADDRESS": "support@roomly.bid",
         "MAIL_ALLOWED_RECIPIENTS": "",
         "MAIL_TRANSPORT": "email"
       }

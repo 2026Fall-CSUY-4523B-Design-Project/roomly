@@ -69,7 +69,9 @@ schema no longer fits.
 
 ## One-time: the host
 
-Docker and the compose plugin are already on the machine; everything below is done once, as root.
+Docker is already on the machine; the compose v2 plugin is not (`apt install docker-compose-v2`; the
+Ubuntu `docker-compose` 1.x package does not understand this file). Everything below is done once,
+as root.
 
 ```sh
 adduser --disabled-password --gecos "" roomly-deploy
@@ -132,9 +134,21 @@ keeps the origin from being reached directly.
 
 6. Email Routing: enable it, then route `support@roomly.bid` and `dmarc@roomly.bid` to the
    **roomly-mail** Worker, plus a catch-all. Deploy the Worker first; there is nothing to route to
-   until it exists.
+   until it exists. The Worker forwards support mail to `SUPPORT_INBOX`: a real mailbox outside the
+   domain, added under Email Routing → Destination addresses and verified. It is a Worker secret
+   because this repository is public, and it must not be `support@roomly.bid` (that would forward
+   to itself):
+
+   ```sh
+   pnpm exec wrangler secret put SUPPORT_INBOX --env production   # in mail/
+   ```
+
+   `SUPPORT_ADDRESS` (the public `support@roomly.bid`) is a plain var; it is the Reply-To of
+   outbound mail. With `SUPPORT_INBOX` unset, inbound mail is logged and dropped.
 7. ghcr: both packages (`roomly-api`, `roomly-web`) must be **public**, otherwise the host needs a
-   registry credential. Packages → the package → Package settings → Change visibility.
+   registry credential. A package exists only after its first push, so the first tag's deploy step
+   fails on `pull`; then make both public (Packages → the package → Package settings → Change
+   visibility) and re-run the failed job (`gh run rerun <id> --failed`).
 
 ## GitHub configuration
 

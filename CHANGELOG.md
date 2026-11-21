@@ -52,6 +52,10 @@ All notable changes to this project are documented here, following [Keep a Chang
 - `ROOMLY_MAIL`, `ROOMLY_MAIL_URL`, `ROOMLY_MAIL_SECRET`, `ROOMLY_APP_URL`: production sends through
   a signed HTTP call to the mail Worker; development logs the links.
 
+### Fixed
+- Mail Worker: Reply-To is the public `SUPPORT_ADDRESS`; inbound mail is forwarded to a private
+  `SUPPORT_INBOX` Worker secret (it used to forward `support@roomly.bid` to itself).
+
 ### Changed
 - `POST /auth/sign-up` answers `201 {email, verification_sent}` instead of a session.
 

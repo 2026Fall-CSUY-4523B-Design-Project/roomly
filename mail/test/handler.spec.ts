@@ -21,7 +21,8 @@ function makeEnv(overrides: Partial<Env> = {}) {
     MAIL_SECRET: SECRET,
     APP_URL: "https://roomly.bid",
     MAIL_FROM: "Roomly <no-reply@roomly.bid>",
-    SUPPORT_INBOX: "support@roomly.bid",
+    SUPPORT_ADDRESS: "support@roomly.bid",
+    SUPPORT_INBOX: "inbox@example.net",
     MAIL_ALLOWED_RECIPIENTS: "",
     MAIL_TRANSPORT: "email",
     ...overrides,
@@ -189,7 +190,15 @@ describe("handleEmail", () => {
     const { env } = makeEnv();
     const { message, forwarded } = inbound("support@roomly.bid");
     await handleEmail(message, env);
-    expect(forwarded).toEqual(["support@roomly.bid"]);
+    // The private inbox, not the public address: forwarding to support@roomly.bid would loop.
+    expect(forwarded).toEqual(["inbox@example.net"]);
+  });
+
+  it("drops everything when no inbox is configured", async () => {
+    const { env } = makeEnv({ SUPPORT_INBOX: undefined });
+    const { message, forwarded } = inbound("support@roomly.bid");
+    await handleEmail(message, env);
+    expect(forwarded).toEqual([]);
   });
 
   it("drops bounces instead of forwarding them", async () => {
