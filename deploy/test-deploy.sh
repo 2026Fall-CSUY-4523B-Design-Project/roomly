@@ -70,5 +70,8 @@ for tag in "main; id" "v1" "v1.2.3 extra"; do
   check "deploy-to-host refuses '$tag'" "$rc" "2"
 done
 
+rc=0; DEPLOY_PORT="22; id" DEPLOY_HOST=h DEPLOY_USER=u DEPLOY_SSH_KEY=k DEPLOY_KNOWN_HOSTS=n bash "$HERE/deploy-to-host.sh" v1.2.3 >/dev/null 2>&1 || rc=$?
+check "deploy-to-host refuses a non-numeric port" "$rc" "2"
+
 ((failures == 0)) || { echo "$failures check(s) failed"; exit 1; }
 echo "all checks passed"

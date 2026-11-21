@@ -97,6 +97,24 @@ chown roomly-deploy:roomly-deploy /home/roomly-deploy/.ssh/authorized_keys
 chmod 600 /home/roomly-deploy/.ssh/authorized_keys
 ```
 
+GitHub's runners cannot reach a tailnet address, so sshd needs a listener on the public address.
+Keep it narrow: a separate port, usable by the deploy account only, public keys only.
+
+```sh
+cat >>/etc/ssh/sshd_config <<'EOF'
+ListenAddress <public-ip>:2222
+Match LocalPort 2222
+    AllowUsers roomly-deploy
+    PermitRootLogin no
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+    AuthenticationMethods publickey
+    AllowTcpForwarding no
+    X11Forwarding no
+EOF
+sshd -t && systemctl reload ssh
+```
+
 `restrict` disables pty, forwarding and agent use; the command string only reaches
 `$SSH_ORIGINAL_COMMAND`. A leaked key can deploy a tag and nothing else — it cannot read `.env`, get
 a shell, or run `docker` directly.
@@ -168,9 +186,10 @@ Repository secrets:
 | Secret | Value |
 | --- | --- |
 | `DEPLOY_HOST` | VPS address |
+| `DEPLOY_PORT` | `2222`, the public sshd listener below (defaults to 22 when unset) |
 | `DEPLOY_USER` | `roomly-deploy` |
 | `DEPLOY_SSH_KEY` | private key, full contents |
-| `DEPLOY_KNOWN_HOSTS` | `ssh-keyscan -t ed25519 <host>` |
+| `DEPLOY_KNOWN_HOSTS` | `[<host>]:2222 <contents of /etc/ssh/ssh_host_ed25519_key.pub>`, taken from the host itself rather than scanned over the network |
 | `CLOUDFLARE_API_TOKEN` | Account → Workers Scripts: Edit; Zone (`roomly.bid`) → Workers Routes: Edit, DNS: Edit |
 | `CLOUDFLARE_ACCOUNT_ID` | Workers overview in the dashboard |
 | `MAIL_SECRET` | `openssl rand -hex 32`; the same value as `ROOMLY_MAIL_SECRET` in `/srv/roomly/.env` |
