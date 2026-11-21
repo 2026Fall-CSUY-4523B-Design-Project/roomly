@@ -4,11 +4,11 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
-## [3.0.0] - 2026-11-20
+## [2.2.0] - 2026-11-20
 
 First production release: accounts confirm their email, the stack deploys itself from a tag, and
 the backend implements every SSDS use case. `POST /auth/sign-up` no longer returns a session, so
-clients built against 2.x must sign in after confirming the address.
+clients must sign in after confirming the address.
 
 ### Added
 - Continuous deployment off a `v*` tag: the tests run, both images are pushed to ghcr.io, the mail
