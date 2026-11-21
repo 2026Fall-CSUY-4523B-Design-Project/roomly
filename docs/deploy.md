@@ -126,15 +126,26 @@ keeps the origin from being reached directly.
 3. Workers **Paid** plan — outbound mail is only available there, 3,000 messages a month included.
 4. Email Service → onboard `roomly.bid` as a sending domain; SPF and DKIM are published for you.
    Wait until the domain reports ready.
-5. DMARC, permissive first:
+5. DMARC, permissive first. Enabling Email Sending creates `_dmarc` as `p=reject`; change it:
 
    ```
    _dmarc.roomly.bid  TXT  "v=DMARC1; p=none; rua=mailto:dmarc@roomly.bid; adkim=r; aspf=r"
    ```
 
 6. Email Routing: enable it, then route `support@roomly.bid` and `dmarc@roomly.bid` to the
-   **roomly-mail** Worker, plus a catch-all. Deploy the Worker first; there is nothing to route to
-   until it exists. The Worker forwards support mail to `SUPPORT_INBOX`: a real mailbox outside the
+   **roomly-mail** Worker. No catch-all: the CLI can only forward or drop there, and other
+   addresses should not be accepted. Deploy the Worker first; there is nothing to route to until it
+   exists:
+
+   ```sh
+   wrangler email routing enable roomly.bid
+   for a in support dmarc; do
+     wrangler email routing rules create roomly.bid --name "$a to roomly-mail Worker" \
+       --match-type literal --match-field to --match-value "$a@roomly.bid" \
+       --action-type worker --action-value roomly-mail
+   done
+   ```
+ The Worker forwards support mail to `SUPPORT_INBOX`: a real mailbox outside the
    domain, added under Email Routing → Destination addresses and verified. It is a Worker secret
    because this repository is public, and it must not be `support@roomly.bid` (that would forward
    to itself):
