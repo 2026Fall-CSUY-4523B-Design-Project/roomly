@@ -13,6 +13,8 @@ fi
 : "${DEPLOY_USER:?DEPLOY_USER is not set}"
 : "${DEPLOY_SSH_KEY:?DEPLOY_SSH_KEY is not set}"
 : "${DEPLOY_KNOWN_HOSTS:?DEPLOY_KNOWN_HOSTS is not set}"
+PORT="${DEPLOY_PORT:-22}"
+[[ "$PORT" =~ ^[0-9]{1,5}$ ]] || { echo "deploy: DEPLOY_PORT must be a port number" >&2; exit 2; }
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -23,6 +25,7 @@ printf '%s\n' "$DEPLOY_KNOWN_HOSTS" >"$tmp/known_hosts"
 
 echo "deploy: asking $DEPLOY_USER@$DEPLOY_HOST for $TAG"
 exec ssh -i "$tmp/key" \
+  -p "$PORT" \
   -o IdentitiesOnly=yes \
   -o BatchMode=yes \
   -o StrictHostKeyChecking=yes \
