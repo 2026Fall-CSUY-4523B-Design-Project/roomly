@@ -195,6 +195,11 @@ openssl rand -base64 18 | tr -d '/+=' | pnpm exec wrangler secret put INBOX_PASS
 openssl rand -hex 32                  | pnpm exec wrangler secret put INBOX_SESSION_KEY --env production
 ```
 
+For demos the login can be switched off: `INBOX_AUTH` set to `off` (a plain var, currently set for
+production in `mail/wrangler.jsonc`) opens the inbox to anyone, read-only (no delete, viewing does not
+mark mail read). Anyone who knows the address can read every message sent to the domain, so remove
+that line to bring the password back.
+
 Rotate the password by putting a new `INBOX_PASSWORD`; rotating `INBOX_SESSION_KEY` signs everyone out.
 The schema is `mail/migrations/`; CI runs `wrangler d1 migrations apply` before every deploy, so add a
 new numbered file for each change and never edit one that has shipped.

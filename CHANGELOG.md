@@ -56,6 +56,8 @@ All notable changes to this project are documented here, following [Keep a Chang
   parsed and stored in D1 and shown in a password-protected web inbox (list, search, per-recipient
   filter, read, delete). Plain text only, a strict CSP, a signed session cookie, a login throttle and a
   daily purge of mail older than 90 days. Forwarding to a private mailbox (`SUPPORT_INBOX`) is now optional.
+- `INBOX_AUTH=off` opens the inbox to anyone, read-only, for demos; it is set for production in
+  `mail/wrangler.jsonc`.
 - The mail deploy action applies D1 migrations before each deploy.
 
 ### Fixed

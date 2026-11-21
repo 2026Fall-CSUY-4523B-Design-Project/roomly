@@ -88,7 +88,10 @@ async function route(
   if (!isInboxPath) return null;
 
   const secure = url.protocol === "https:";
-  if (!store || !env.INBOX_PASSWORD || !env.INBOX_SESSION_KEY) return html(503, notConfiguredPage());
+  const open = env.INBOX_AUTH === "off";
+  if (!store) return html(503, notConfiguredPage());
+  if (open) return openRoute(request, url, store, nowSeconds);
+  if (!env.INBOX_PASSWORD || !env.INBOX_SESSION_KEY) return html(503, notConfiguredPage());
   const key = env.INBOX_SESSION_KEY;
   const signedIn = await verifySession(key, readCookie(request.headers.get("cookie"), COOKIE), nowSeconds);
 
@@ -123,17 +126,7 @@ async function route(
 
   if (path === "/") return redirect("/inbox");
 
-  if (path === "/inbox") {
-    if (request.method !== "GET") return html(405, "", { allow: "GET" });
-    const to = (url.searchParams.get("to") ?? "").trim().slice(0, 254);
-    const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
-    const pageNumber = Math.max(1, Math.min(10_000, Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1));
-    const [page, recipients] = await Promise.all([
-      store.list({ to: to || undefined, q: q || undefined, limit: PAGE_SIZE, offset: (pageNumber - 1) * PAGE_SIZE }),
-      store.recipients(),
-    ]);
-    return html(200, inboxPage({ page, recipients, to, q, pageNumber, pageSize: PAGE_SIZE }));
-  }
+  if (path === "/inbox") return listing(request, url, store, false);
 
   const match = /^\/m\/([0-9a-f-]{36})(\/delete)?$/.exec(path);
   if (!match) return html(404, notFoundPage());
@@ -147,10 +140,38 @@ async function route(
     return redirect("/inbox");
   }
 
+  return viewMessage(request, store, id, false, nowSeconds);
+}
+
+async function listing(request: Request, url: URL, store: InboxStore, open: boolean): Promise<Response> {
+  if (request.method !== "GET") return html(405, "", { allow: "GET" });
+  const to = (url.searchParams.get("to") ?? "").trim().slice(0, 254);
+  const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
+  const pageNumber = Math.max(1, Math.min(10_000, Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1));
+  const [page, recipients] = await Promise.all([
+    store.list({ to: to || undefined, q: q || undefined, limit: PAGE_SIZE, offset: (pageNumber - 1) * PAGE_SIZE }),
+    store.recipients(),
+  ]);
+  return html(200, inboxPage({ page, recipients, to, q, pageNumber, pageSize: PAGE_SIZE, open }));
+}
+
+async function viewMessage(request: Request, store: InboxStore, id: string, open: boolean, nowSeconds: number): Promise<Response> {
   if (request.method !== "GET") return html(405, "", { allow: "GET" });
   const message = await store.get(id);
   if (!message) return html(404, notFoundPage());
-  if (!message.readAt) await store.markRead(id, new Date(nowSeconds * 1000).toISOString());
-  return html(200, messagePage(message));
+  // In open mode a visitor must not change anything, not even what counts as read.
+  if (!open && !message.readAt) await store.markRead(id, new Date(nowSeconds * 1000).toISOString());
+  return html(200, messagePage(message, open));
+}
+
+/** Demo mode (INBOX_AUTH=off): no login, read-only. */
+async function openRoute(request: Request, url: URL, store: InboxStore, nowSeconds: number): Promise<Response> {
+  const path = url.pathname;
+  if (path === "/" || path === "/login" || path === "/logout") return redirect("/inbox");
+  if (path === "/inbox") return listing(request, url, store, true);
+  const match = /^\/m\/([0-9a-f-]{36})(\/delete)?$/.exec(path);
+  if (!match) return html(404, notFoundPage());
+  if (match[2]) return html(403, errorPage("The demo inbox is read-only."));
+  return viewMessage(request, store, match[1] as string, true, nowSeconds);
 }
 

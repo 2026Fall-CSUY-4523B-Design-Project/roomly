@@ -34,12 +34,12 @@ dl{display:grid;grid-template-columns:90px 1fr;gap:6px 12px;margin:0}dt{color:va
 .error{color:var(--danger)}form.inline{display:inline}
 `;
 
-function layout(title: string, body: string, signedIn: boolean): string {
+function layout(title: string, body: string, signedIn: boolean, open = false): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><title>${esc(title)} · Roomly inbox</title><style>${CSS}</style></head>
 <body><header><a href="/inbox">Roomly inbox</a>${
-    signedIn ? `<form class="inline" method="post" action="/logout"><button class="quiet">Sign out</button></form>` : ""
+    signedIn && !open ? `<form class="inline" method="post" action="/logout"><button class="quiet">Sign out</button></form>` : ""
   }</header><main>${body}</main></body></html>`;
 }
 
@@ -57,8 +57,8 @@ export function notConfiguredPage(): string {
   return layout("Not configured", `<div class="card"><p>The inbox is not configured on this Worker yet.</p></div>`, false);
 }
 
-export function errorPage(): string {
-  return layout("Error", `<div class="card"><p class="error">Something went wrong. Try again in a moment.</p><p><a href="/inbox">← Inbox</a></p></div>`, false);
+export function errorPage(message = "Something went wrong. Try again in a moment."): string {
+  return layout("Error", `<div class="card"><p class="error">${esc(message)}</p><p><a href="/inbox">← Inbox</a></p></div>`, false);
 }
 
 export function notFoundPage(): string {
@@ -80,6 +80,7 @@ export interface ListView {
   q: string;
   pageNumber: number;
   pageSize: number;
+  open?: boolean;
 }
 
 function href(params: { to?: string; q?: string; page?: number }): string {
@@ -92,7 +93,7 @@ function href(params: { to?: string; q?: string; page?: number }): string {
 }
 
 export function inboxPage(view: ListView): string {
-  const { page, recipients, to, q, pageNumber, pageSize } = view;
+  const { page, recipients, to, q, pageNumber, pageSize, open = false } = view;
   const pages = Math.max(1, Math.ceil(page.total / pageSize));
   const rows = page.messages
     .map(
@@ -116,10 +117,11 @@ ${to ? `<input type="hidden" name="to" value="${esc(to)}">` : ""}<button>Search<
 <p class="muted">${page.total} message${page.total === 1 ? "" : "s"}, ${page.unread} unread${to ? ` · to ${esc(to)}` : ""}</p>${filters ? `<p>${filters}</p>` : ""}
 ${page.total === 0 ? `<p class="muted">Nothing here yet. Mail sent to any @roomly.bid address lands in this list.</p>` : `<table><thead><tr><th>Received</th><th>From</th><th>To</th><th>Subject</th></tr></thead><tbody>${rows}</tbody></table>`}${pager}</div>`,
     true,
+    open,
   );
 }
 
-export function messagePage(m: StoredMessage): string {
+export function messagePage(m: StoredMessage, open = false): string {
   return layout(
     m.subject || "(no subject)",
     `<p><a href="/inbox">← Inbox</a></p><div class="card"><h1 style="margin-top:0;font-size:20px">${esc(m.subject || "(no subject)")}</h1>
@@ -127,7 +129,8 @@ export function messagePage(m: StoredMessage): string {
 <dt>Envelope</dt><dd>${esc(m.envelopeFrom)} → ${esc(m.envelopeTo)}</dd><dt>Received</dt><dd>${esc(when(m.receivedAt))}</dd>
 <dt>Size</dt><dd>${m.size} bytes${m.attachments > 0 ? ` · ${m.attachments} attachment${m.attachments === 1 ? "" : "s"} not stored` : ""}${m.truncated ? " · body cut short" : ""}</dd></dl>
 <pre>${esc(m.body || "(no text content)")}</pre>
-<form method="post" action="/m/${esc(m.id)}/delete" style="margin-top:20px"><button class="danger">Delete</button></form></div>`,
+${open ? "" : `<form method="post" action="/m/${esc(m.id)}/delete" style="margin-top:20px"><button class="danger">Delete</button></form>`}</div>`,
     true,
+    open,
   );
 }

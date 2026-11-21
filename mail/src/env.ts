@@ -59,6 +59,11 @@ export interface Env {
   SUPPORT_INBOX?: string;
   /** The inbox database (D1). Without it the web inbox is off and inbound mail is only forwarded. */
   DB?: D1Database;
+  /**
+   * `off` opens the web inbox to anyone, read-only: a demo mode. Anything
+   * else (or unset) keeps the password login.
+   */
+  INBOX_AUTH?: string;
   /** Password for the web inbox. A Worker secret; unset keeps the inbox login closed. */
   INBOX_PASSWORD?: string;
   /** Signs the inbox session cookie. A Worker secret, any long random string. */

@@ -56,6 +56,8 @@
         "APP_URL": "https://roomly.bid",
         "MAIL_FROM": "Roomly <no-reply@roomly.bid>",
         "SUPPORT_ADDRESS": "support@roomly.bid",
+        // Demo: the inbox is open and read-only. Delete this line to bring the password login back.
+        "INBOX_AUTH": "off",
         "MAIL_ALLOWED_RECIPIENTS": "",
         "MAIL_TRANSPORT": "email"
       }

@@ -8,7 +8,8 @@ The Cloudflare Worker behind `mail.roomly.bid`. It does two jobs:
   `email()` handler, which stores it in D1. Human mail is also forwarded to `SUPPORT_INBOX` when that
   optional secret is set; bounces and DMARC traffic are not (`src/inbound.ts`).
 - **Inbox.** `https://mail.roomly.bid/` is a password-protected web inbox over the stored mail
-  (`src/inbox/`): list, search, per-recipient filter, read, delete. Plain text only.
+  (`src/inbox/`): list, search, per-recipient filter, read, delete. Plain text only. `INBOX_AUTH=off`
+  turns it into an open, read-only demo inbox.
 
 Deployment, DNS and secrets are in [../docs/deploy.md](../docs/deploy.md).
 

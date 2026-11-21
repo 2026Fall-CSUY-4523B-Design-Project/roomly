@@ -305,6 +305,47 @@ describe("web inbox", () => {
   });
 });
 
+describe("open demo mode (INBOX_AUTH=off)", () => {
+  const request = (env: Env, path: string, init: RequestInit = {}) => handleInbox(new Request(`${BASE}${path}`, init), env, NOW) as Promise<Response>;
+
+  it("shows the inbox without a login, with no sign-out or delete controls", async () => {
+    const { env, store } = makeEnv({ INBOX_AUTH: "off", INBOX_PASSWORD: undefined, INBOX_SESSION_KEY: undefined });
+    const m = stored({ subject: "demo mail" });
+    await store.insert(m);
+    const list = await request(env, "/inbox");
+    expect(list.status).toBe(200);
+    const listHtml = await list.text();
+    expect(listHtml).toContain("demo mail");
+    expect(listHtml).not.toContain("Sign out");
+    const view = await request(env, `/m/${m.id}`);
+    expect(view.status).toBe(200);
+    expect(await view.text()).not.toContain("Delete");
+    for (const path of ["/", "/login", "/logout"]) {
+      const redirect = await request(env, path);
+      expect([redirect.status, redirect.headers.get("location")]).toEqual([303, "/inbox"]);
+    }
+  });
+
+  it("is read-only: no delete, and viewing does not mark anything read", async () => {
+    const { env, store } = makeEnv({ INBOX_AUTH: "off" });
+    const m = stored();
+    await store.insert(m);
+    await request(env, `/m/${m.id}`);
+    expect((await store.get(m.id))?.readAt).toBeNull();
+    const del = await request(env, `/m/${m.id}/delete`, { method: "POST", headers: { origin: BASE, "sec-fetch-site": "same-origin" } });
+    expect(del.status).toBe(403);
+    expect(await store.get(m.id)).not.toBeNull();
+  });
+
+  it("keeps the strict response headers and still needs a database", async () => {
+    const { env } = makeEnv({ INBOX_AUTH: "off" });
+    expect((await request(env, "/inbox")).headers.get("content-security-policy")).toContain("default-src 'none'");
+    expect((await request(makeEnv({ INBOX_AUTH: "off", DB: undefined }).env, "/inbox")).status).toBe(503);
+    // Only the exact value opens it.
+    expect((await request(makeEnv({ INBOX_AUTH: "false" }).env, "/inbox")).status).toBe(303);
+  });
+});
+
 describe("handleEmail with the inbox", () => {
   it("stores every message, whichever address it was sent to", async () => {
     const { env, store } = makeEnv();
