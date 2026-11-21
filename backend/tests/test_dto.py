@@ -102,7 +102,8 @@ def test_http_422_locates_errors_in_body_path_and_query() -> None:
     app.state.services.account.authenticate = lambda token: User(
         id=uuid.uuid4(), email="person@example.com", password_hash=None, display_name="Person", role="user",
         preferences={}, notify_kinds=[], notify_email=True, notify_digest=False, quiet_start=None,
-        quiet_end=None, created_at=dt.datetime.now(dt.UTC), updated_at=dt.datetime.now(dt.UTC), deleted_at=None)
+        quiet_end=None, created_at=dt.datetime.now(dt.UTC), updated_at=dt.datetime.now(dt.UTC), deleted_at=None,
+        email_verified_at=dt.datetime.now(dt.UTC))
     client = TestClient(app)
     auth = {"authorization": "Bearer any-token"}
     detail = client.post("/listings", json={"address_line": "1 A St", "bedrooms": True}, headers=auth).json()["detail"]

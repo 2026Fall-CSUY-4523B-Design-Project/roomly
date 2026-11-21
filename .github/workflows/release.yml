@@ -1,11 +1,14 @@
 name: Release
 
+# Pushing a v* tag is the deploy. There is no approval step: whoever can push a tag can put code in
+# production, so the images are built here and the host only runs them unprivileged (docs/deploy.md).
 on:
   push:
     tags: ["v*"]
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   release:
@@ -22,19 +25,61 @@ jobs:
           --health-cmd "pg_isready -U roomly" --health-interval 2s --health-timeout 5s --health-retries 15
     env:
       ROOMLY_TEST_DATABASE_URL: postgresql://roomly@127.0.0.1:5433/roomly_test
+      IMAGE_PREFIX: ghcr.io/2026fall-csuy-4523b-design-project
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.2
         with:
           python-version: "3.14"
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: frontend/.nvmrc
       - run: script/backend.sh test
-      - run: script/release.sh "${GITHUB_REF_NAME}"
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push the API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/roomly-api:${{ github.ref_name }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push the web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/roomly-web:${{ github.ref_name }}
+          build-args: ROOMLY_API_URL=http://api:8000
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      # Before the host: the API starts calling the Worker as soon as it is live.
+      - uses: ./.github/actions/deploy-mail-worker
+        with:
+          environment: production
+          mail-secret: ${{ secrets.MAIL_SECRET }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy to the host
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: deploy/deploy-to-host.sh "${GITHUB_REF_NAME}"
+
       - env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" dist/* --generate-notes
+        run: gh release create "${GITHUB_REF_NAME}" --generate-notes

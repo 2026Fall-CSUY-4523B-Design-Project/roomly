@@ -1,6 +1,6 @@
 """SQL mappers: one class per table (or tightly coupled table pair), bound to a connection."""
 
-from roomly.mapper.account_mapper import SessionMapper, UserMapper
+from roomly.mapper.account_mapper import AuthTokenMapper, SessionMapper, UserMapper
 from roomly.mapper.comparison_mapper import ComparisonMapper
 from roomly.mapper.group_mapper import GroupMapper, InvitationMapper, MembershipMapper
 from roomly.mapper.listing_mapper import (
@@ -17,6 +17,7 @@ from roomly.mapper.room_mapper import MessageMapper, PollMapper, ReactionMapper
 from roomly.mapper.search_mapper import CommuteMapper, SavedSearchMapper
 
 __all__ = [
+    "AuthTokenMapper",
     "CommuteMapper",
     "ComparisonMapper",
     "DuplicateMapper",

@@ -30,8 +30,10 @@ db/
   migrations/sqlite/     the same versions in SQLite dialect
   data/                  local Postgres cluster (gitignored)
 script/       run.sh · backend.sh · frontend.sh · database.sh · release.sh
+mail/         Cloudflare Worker: outbound auth mail `mail.roomly.bid`, inbound routing
+deploy/       docker compose stack, nginx site, and the deploy script CI calls
 .github/      CI and release workflows
-docs/         backend/*.md · frontend/*.md
+docs/         backend/*.md · frontend/*.md · deploy.md
 ```
 
 ## Quick start
@@ -77,6 +79,9 @@ Copy [.env.example](.env.example) and export it, or set the variables in your de
 | `DATABASE_URL` | `postgresql://roomly@127.0.0.1:5433/postgres` in dev | required in prod; `sqlite:///path` = SQLite only |
 | `ROOMLY_SQLITE_FALLBACK` | `db/roomly.sqlite3` in dev, off in prod | SQLite file used when Postgres is unreachable at startup; `off` disables |
 | `ROOMLY_MIGRATIONS_DIR` | repo `db/migrations` | set it when running from installed wheels (the release ships `roomly-db-<v>.tar.gz`) |
+| `ROOMLY_MAIL` | `log` in dev, `http` in prod | `log` writes verification and reset links to the backend log; `http` posts to the mail Worker (prod refuses `log`) |
+| `ROOMLY_MAIL_URL` / `ROOMLY_MAIL_SECRET` | none | required when `ROOMLY_MAIL=http`: the Worker's base URL and the secret both sides sign with |
+| `ROOMLY_APP_URL` | `http://localhost:3000` | site URL used in the links the `log` mailer prints |
 | `ROOMLY_API_URL` | `http://127.0.0.1:8000` | frontend rewrite target, read by `next.config.js` at build/start |
 
 ## Testing
@@ -93,7 +98,10 @@ Acceptance testing: [docs/testing/uat.md](docs/testing/uat.md) is run against a 
 
 ## Account authentication
 
-Sign up at `/sign-up` or sign in at `/sign-in`; the header shows the account and a sign-out button.
+Sign up at `/sign-up`, confirm the address with the emailed link, then sign in at `/sign-in`; the
+header shows the account and a sign-out button. Sign-in is refused until the address is confirmed.
+`/forgot-password` emails a reset link that signs the account out everywhere. In development the
+links are printed in the backend log (`ROOMLY_MAIL=log`).
 Passwords are salted scrypt, only SHA-256 hashes of bearer tokens are stored, sessions last seven
 days, and sign-out revokes the current session. The browser keeps the token in per-tab
 `sessionStorage` and restores it through `GET /me`; closing the tab clears storage but not the
@@ -102,8 +110,18 @@ described in [docs/frontend/auth.md](docs/frontend/auth.md), the API in
 [docs/backend/endpoints.md](docs/backend/endpoints.md#login-8121).
 
 ## CI and releases
-- `ci.yml`: backend lint + test (with a `postgres:18` service), frontend build.
-- `release.yml`: pushing a `v*` tag runs the tests, `script/release.sh`, and publishes a GitHub Release with the backend wheel plus the frontend and migrations tarballs.
+- `ci.yml`: backend lint + test (with a `postgres:18` service), frontend build, and a `containers`
+  job that runs `deploy/test-deploy.sh`, builds both images and starts the production compose stack
+  (read-only, no capabilities) until it answers through the frontend, so a broken Dockerfile or
+  compose file fails before a tag does.
+- `mail.yml`: typecheck, vitest and a `wrangler deploy --dry-run` for the mail Worker; `main` deploys
+  the staging Worker.
+- `release.yml`: pushing a `v*` tag publishes both images to ghcr.io, deploys the mail Worker, then
+  the host, and opens the GitHub Release. There is no approval step — the tag is the deploy.
+
+Production is one VPS behind Cloudflare running docker compose, with the mail Worker alongside it.
+[docs/deploy.md](docs/deploy.md) covers the host, DNS, mail, the deploy key and what a compromised
+container can reach.
 
 ## Dependencies
 - [fastapi (v0.162)](https://fastapi.tiangolo.com/) + [pydantic (v2.14)](https://docs.pydantic.dev/), served by [uvicorn (v0.54)](https://www.uvicorn.org/)

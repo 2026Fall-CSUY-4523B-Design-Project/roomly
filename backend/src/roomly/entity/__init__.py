@@ -29,6 +29,7 @@ class User:
     created_at: dt.datetime
     updated_at: dt.datetime
     deleted_at: dt.datetime | None
+    email_verified_at: dt.datetime | None
 
     @property
     def is_admin(self) -> bool:
@@ -43,6 +44,19 @@ class Session:
     created_at: dt.datetime
     expires_at: dt.datetime
     revoked_at: dt.datetime | None
+
+
+@dataclass(frozen=True)
+class AuthToken:
+    """An emailed single-use link (``verify_email`` or ``reset_password``); only its hash is stored."""
+
+    id: UUID
+    user_id: UUID
+    kind: str
+    token_hash: bytes
+    created_at: dt.datetime
+    expires_at: dt.datetime
+    consumed_at: dt.datetime | None
 
 
 # --- groups --------------------------------------------------------------------------

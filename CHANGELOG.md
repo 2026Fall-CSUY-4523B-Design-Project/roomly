@@ -5,6 +5,23 @@ All notable changes to this project are documented here, following [Keep a Chang
 ## [Unreleased]
 
 ### Added
+- Continuous deployment off a `v*` tag: the tests run, both images are pushed to ghcr.io, the mail
+  Worker is deployed, and the host is asked to `deploy <tag>` over an ssh key that can run nothing
+  else. There is no approval step; the tag is the deploy. `ci.yml` also builds both images and starts
+  the production compose stack on every pull request, so a broken Dockerfile or compose file fails
+  before the tag does.
+- `backend/Dockerfile`, `frontend/Dockerfile`, `deploy/docker-compose.yml`: the API and the frontend
+  as unprivileged, read-only containers beside PostgreSQL, with migrations baked into the API image.
+- `deploy/test-deploy.sh` runs `deploy.sh` against fake docker/curl: argument refusal, success, failed
+  pull, each health check failing, and rollback.
+- `deploy/deploy.sh`: the host half of a deploy — argument check, `compose pull`, `up -d`, health
+  checks through both the API and the frontend, and an automatic rollback to the previous tag.
+- `mail/`: the Cloudflare Worker behind `mail.roomly.bid`. `POST /v1/send` renders verification and
+  password-reset mail and requires an HMAC over the timestamp and body; Email Routing inbound mail
+  is forwarded to the support inbox and bounces are dropped. Vitest covers signing, templates and
+  routing without a Cloudflare account.
+- `docs/deploy.md` covering the host, Cloudflare DNS and mail setup, the deploy key, rollback, and
+  what a compromised container can and cannot reach.
 - `docs/frontend/` covering routing, API access, authentication and UI conventions.
 - `docs/backend/` split into layers, database, endpoints and traceability; `docs/backend.md` is gone
   and the README is trimmed to the shared setup and links to both doc sets.
@@ -27,6 +44,30 @@ All notable changes to this project are documented here, following [Keep a Chang
   seven-day bearer sessions, hashed tokens, and immediate session revocation.
 - Browser sign-up/sign-in forms, per-tab session restoration, expiry handling, and account navigation.
 - HTTP authentication tests on PostgreSQL and SQLite, including concurrent duplicate sign-ups.
+
+- Email confirmation and password reset: sign-up emails a 24-hour single-use link and creates no
+  session, sign-in is refused (`403`, `email_not_verified`) until it is opened, and
+  `/forgot-password` sends a 30-minute reset link that signs the account out everywhere. Links are
+  stored as SHA-256 hashes and limited to one a minute and three an hour per account. Migration
+  `0002_auth_email` (both engines) adds `email_verified_at`, marks existing accounts verified, and
+  creates `auth_token`.
+- `ROOMLY_MAIL`, `ROOMLY_MAIL_URL`, `ROOMLY_MAIL_SECRET`, `ROOMLY_APP_URL`: production sends through
+  a signed HTTP call to the mail Worker; development logs the links.
+
+- Support inbox at `https://mail.roomly.bid/`: every message sent to any `@roomly.bid` address is
+  parsed and stored in D1 and shown in a password-protected web inbox (list, search, per-recipient
+  filter, read, delete). Plain text only, a strict CSP, a signed session cookie, a login throttle and a
+  daily purge of mail older than 90 days. Forwarding to a private mailbox (`SUPPORT_INBOX`) is now optional.
+- `INBOX_AUTH=off` opens the inbox to anyone, read-only, for demos; it is set for production in
+  `mail/wrangler.jsonc`.
+- The mail deploy action applies D1 migrations before each deploy.
+
+### Fixed
+- Mail Worker: Reply-To is the public `SUPPORT_ADDRESS`; inbound mail is forwarded to a private
+  `SUPPORT_INBOX` Worker secret (it used to forward `support@roomly.bid` to itself).
+
+### Changed
+- `POST /auth/sign-up` answers `201 {email, verification_sent}` instead of a session.
 
 ### Removed
 - Fixture mode (`ROOMLY_FIXTURES`, `roomly/fixtures.py` and the 501 responses): every endpoint now

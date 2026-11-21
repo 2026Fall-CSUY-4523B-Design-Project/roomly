@@ -1,0 +1,77 @@
+# Production stack for roomly.bid. Lives at /srv/roomly/docker-compose.yml on the host; the images
+# come from ghcr.io and the tag is supplied by deploy.sh. nginx stays on the host and talks to web
+# on loopback, so nothing here is reachable from outside the machine.
+
+name: roomly
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  pids_limit: 256
+  mem_limit: 512m
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-roomly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-roomly}
+    volumes:
+      # Postgres 18+ keeps PGDATA in a versioned subdirectory and declares /var/lib/postgresql as the
+      # volume; mounting .../data would leave the cluster in an anonymous volume.
+      - db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-roomly} -d $${POSTGRES_DB:-roomly}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 1g
+    # No ports: the API reaches it over the compose network, nothing else can.
+
+  api:
+    <<: *hardening
+    image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/roomly-api:${TAG:?TAG is required}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ROOMLY_ENV: prod
+      # 0.0.0.0 inside the container; the published port is bound to loopback on the host.
+      ROOMLY_HOST: 0.0.0.0
+      ROOMLY_PORT: "8000"
+      ROOMLY_LOG_LEVEL: INFO
+      ROOMLY_MIGRATIONS_DIR: /app/db/migrations
+      # Passwords must be URL-safe: this value goes into a connection string.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-roomly}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-roomly}
+      ROOMLY_APP_URL: ${ROOMLY_APP_URL:-https://roomly.bid}
+      ROOMLY_MAIL_URL: ${ROOMLY_MAIL_URL:-https://mail.roomly.bid}
+      ROOMLY_MAIL_SECRET: ${ROOMLY_MAIL_SECRET:?ROOMLY_MAIL_SECRET is required}
+    ports:
+      - 127.0.0.1:8000:8000
+    tmpfs:
+      - /tmp
+
+  web:
+    <<: *hardening
+    image: ${IMAGE_PREFIX}/roomly-web:${TAG}
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      # Next 12 on Node 24: webpack's MD4 hashing needs the legacy OpenSSL provider.
+      NODE_OPTIONS: --openssl-legacy-provider
+      # Server-side rewrite target for /api/*; the browser still only sees roomly.bid.
+      ROOMLY_API_URL: http://api:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - 127.0.0.1:3000:3000
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+
+volumes:
+  db:

@@ -20,7 +20,7 @@ The eight use cases of SSDS-001 §8.1.2 are in scope, plus the browser pages tha
 
 | Area | What the tester exercises |
 | --- | --- |
-| Access | Sign-up, sign-in, session restore, sign-out, account deletion, deleted-user attribution |
+| Access | Sign-up with email confirmation, sign-in, password reset, session restore, sign-out, account deletion, deleted-user attribution |
 | Groups | Create, invite, accept/decline, six-member limit, ownership transfer, removal, leave/dissolve |
 | Listings | Manual submission, card values, Unknown values, conflicts, price history, duplicate hold, reports |
 | Administration | Source configuration, duplicate merge/split/keep-separate, report resolution, admin-only access |
@@ -30,8 +30,9 @@ The eight use cases of SSDS-001 §8.1.2 are in scope, plus the browser pages tha
 | Notifications | Inbox, unread count, read/read-all, delivery settings |
 | Pages | Header navigation, search dashboard, account pages, listing detail, compare, groups, notifications |
 
-Out of scope for UAT: feed ingestion, explained ranking, commute routing, WebSocket push, email
-delivery, URL import and data export. They are not reachable by a user in this release; see
+Out of scope for UAT: feed ingestion, explained ranking, commute routing, WebSocket push, notification
+email delivery, URL import and data export. (Verification and password-reset email *is* in scope; see
+"Email links" below.) They are not reachable by a user in this release; see
 `docs/backend/traceability.md`.
 
 ### Frontend coverage in 3.x
@@ -46,6 +47,7 @@ UI case pass.
 | --- | --- | --- |
 | `/` | available | UAT-UI-01, UAT-SEA-01 to 06 |
 | `/sign-up`, `/sign-in` | available | UAT-AUTH-01 to 06 |
+| `/verify-email`, `/forgot-password`, `/reset-password` | available | UAT-AUTH-11 to 16 |
 | `/listings/[id]` | not built | UAT-LST-05, UAT-UI-02 (API pass, UI blocked) |
 | `/compare` | not built | UAT-CMP-01 to 07, UAT-UI-03 (API pass, UI blocked) |
 | `/groups` | not built | UAT-GRP-01 to 14, UAT-UI-04 (API pass, UI blocked) |
@@ -70,7 +72,15 @@ cases depend on data created by earlier ones.
 
 ### Accounts
 
-All demo passwords are `roomly1234`.
+All demo passwords are `roomly1234`. Seeded accounts are already email-verified; accounts a tester
+registers are not until they open the emailed link.
+
+### Email links
+
+Sign-up and password reset send a link by email. On a development stack the mail client only logs the
+link (`ROOMLY_MAIL=log`), so find it in the backend log: `grep "mail verify_email" ` or
+`"mail reset_password"` on the `script/run.sh` output, and open the URL it prints. On a deployed
+environment, send to an address under `@roomly.bid` and read it at `https://mail.roomly.bid/`.
 
 | Account | Role in the demo world |
 | --- | --- |
@@ -135,15 +145,21 @@ immediately; do not continue past a P1 in the same area.
 | ID | Role | Steps | Expected |
 | --- | --- | --- | --- |
 | UAT-AUTH-01 | Guest | Open `/`. Do not sign in. Apply a rent filter and sort by price. | Results load without a token. The header shows **Sign in**. Filter changes trigger a new search only on **Apply**, not per keystroke. |
-| UAT-AUTH-02 | Guest | Open `/sign-up`. Register `uat1+<date>@example.com` with an 8-character password and a display name. | 201 / redirected to `/`. Header shows the display name. Reload keeps the session. A new tab is signed out (`sessionStorage` is per tab). |
+| UAT-AUTH-02 | Guest | Open `/sign-up`. Register `uat1+<date>@example.com` with an 8-character password and a display name. Open the emailed link, then sign in. | Sign-up shows "Check your email" and creates **no** session (201 `{email, verification_sent: true}`). The link confirms the address; signing in then redirects to `/`. Header shows the display name. Reload keeps the session. A new tab is signed out (`sessionStorage` is per tab). |
 | UAT-AUTH-03 | Guest | Try to register with `not-an-email`, a 7-character password, and an existing email. | Each attempt is rejected with a readable validation message; the duplicate email answers 409 "An account with this email already exists." No account is created. |
 | UAT-AUTH-04 | Guest | Sign in with a wrong password, an unknown email, and the correct password with the email in upper case. | The first two answer 401 with the same "Invalid email or password." message. The third answers 200 (email is normalized) and lands on `/`. |
 | UAT-AUTH-05 | Signed in | Reload the page, then click **Sign out**. | Reload restores the account through `GET /me`. Sign out answers 204; the header returns to **Sign in**; the old token answers 401. |
 | UAT-AUTH-06 | Signed in | In the browser, open devtools > Application > Session storage > `roomly.session`, set `expires_at` to 30 seconds from now, reload, and wait. | After 30 seconds the app clears the session, shows "Your session has expired. Please sign in again.", and the header returns to **Sign in**. |
 | UAT-AUTH-07 | Signed in | `DELETE /me` with a wrong password. | 401 "Invalid password."; the account still works. |
 | UAT-AUTH-08 | Owner with members | As Maya, `DELETE /me` with the correct password. | 409 "Transfer ownership of your groups before deleting the account."; the account still works. |
-| UAT-AUTH-09 | Member | Register `uat-delete+<date>@example.com`, have Maya invite it to "Bushwick crew", accept, post one message, then `DELETE /me` with the correct password. | 204. `GET /me` answers 401; the message in "Bushwick crew" now shows **Deleted user**; the account is gone from the member list; its sessions, inbox, saved searches and personal comparisons are gone. |
+| UAT-AUTH-09 | Member | Register and confirm `uat-delete+<date>@example.com`, have Maya invite it to "Bushwick crew", accept, post one message, then `DELETE /me` with the correct password. | 204. `GET /me` answers 401; the message in "Bushwick crew" now shows **Deleted user**; the account is gone from the member list; its sessions, inbox, saved searches and personal comparisons are gone. |
 | UAT-AUTH-10 | Deleted user | Sign in as the disposable account from UAT-AUTH-09. | 401, with no indication that the account ever existed. |
+| UAT-AUTH-11 | Guest | Register `uat2+<date>@example.com`, do not open the link, and sign in with the right password. Then sign in with a wrong password. | The right password answers 403 `email_not_verified` and the page offers "Send the link again". The wrong password answers 401 (the 403 is never shown to someone who does not know the password). |
+| UAT-AUTH-12 | Guest | Open the confirmation link, then open the same link again. Request a link, wait 24 hours (or set `auth_token.expires_at` in the past), open it. | The first use confirms the address (204 / "Your email is confirmed"); the second and the expired one answer 422 `invalid_token` with a readable message. The address bar no longer shows `?token=` after the page loads. |
+| UAT-AUTH-13 | Guest | On the unverified account use **Send the link again** twice within a minute, then four times within an hour. Also request it for an address that has no account. | Every request looks identical to the user (the page says "if … a new link is on its way"). Within the cooldown and after three links in an hour nothing new is sent. A link the mail service rejected does not count toward the limit. |
+| UAT-AUTH-14 | Guest | Open `/forgot-password` for a real account and for an unknown address. | Both show the same "If an account exists…" message (202). Only the real account receives a reset link. |
+| UAT-AUTH-15 | Signed in on two tabs | Use the reset link from UAT-AUTH-14 to choose a new password (7 characters first, then 8+). Reload both tabs, sign in with the old and the new password. | 7 characters is rejected and the link still works. After a valid reset both old sessions answer 401, the old password answers 401, the new one works, and the link cannot be used twice. A reset link older than 30 minutes answers 422. |
+| UAT-AUTH-16 | Guest | Reset the password of an account that never confirmed its email. | The reset succeeds and the account can sign in afterwards (reading the mailbox proved the address). |
 | UAT-AUTH-11 | Any | `GET /health` and `GET /openapi.json`. | 200, database reported, and the OpenAPI document lists all 56 endpoints plus `/health`. |
 
 ### B. Groups
@@ -201,7 +217,7 @@ immediately; do not continue past a P1 in the same area.
 | UAT-SEA-05 | Guest | Search `sort=rent_asc`, `rent_desc`, `newest`; use `limit=1&offset=1`; read `total`. | Ascending is Queens, 10 UAT Street, seeded Brooklyn, Manhattan; descending is the reverse. `total` is the unpaged count, `items` respects limit/offset. |
 | UAT-SEA-06 | Guest | Search with `sort=cheapest`, `limit=0`, and `min_rent_cents=500&max_rent_cents=100`. | Each answers 422; the error location is the query parameter. |
 | UAT-SEA-07 | Signed in | Create a saved search "UAT Brooklyn" with `boroughs: ["brooklyn"]`; list it; run it; delete it; run it again. As Priya, run Maya's search id. | 201; listed; the run returns the Brooklyn listings; 204 on delete; 404 on the second run; 404 for another account's search. |
-| UAT-SEA-08 | Signed in | As the account registered in UAT-AUTH-02 (no destinations yet), add three commute destinations; add a fourth; delete one; delete it again. | Three 201s; the fourth answers 409; 204 on delete; 404 on the second delete. |
+| UAT-SEA-08 | Signed in | As the account registered and confirmed in UAT-AUTH-02 (no destinations yet), add three commute destinations; add a fourth; delete one; delete it again. | Three 201s; the fourth answers 409; 204 on delete; 404 on the second delete. |
 | UAT-SEA-09 | Signed in | Save a search with a bad rent range, then with 500-character name. | 422 at the offending field; nothing is stored. |
 
 ### F. Comparison

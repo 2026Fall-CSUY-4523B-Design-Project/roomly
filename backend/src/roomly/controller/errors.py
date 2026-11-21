@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 def _service_error(request: Request, exc: Exception) -> Response:
     assert isinstance(exc, ServiceError)
     headers = {"WWW-Authenticate": "Bearer"} if exc.status == 401 else None
-    return JSONResponse({"detail": exc.detail}, status_code=exc.status, headers=headers)
+    detail = {"code": exc.code, "message": exc.detail} if exc.code else exc.detail
+    return JSONResponse({"detail": detail}, status_code=exc.status, headers=headers)
 
 
 def _integrity_error(request: Request, exc: Exception) -> Response:

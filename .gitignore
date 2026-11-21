@@ -34,6 +34,10 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Cloudflare Workers (mail/)
+.wrangler/
+.dev.vars
+
 # Local databases
 *.sqlite
 *.sqlite3

@@ -45,12 +45,12 @@ _TABLES = [
     "comparison_listing", "comparison", "notification",
     "duplicate_candidate", "data_report", "listing_price_history", "source_record", "listing",
     "group_invitation", "group_membership", "user_group",
-    "saved_search", "commute_destination", "user_session", "app_user", "listing_source",
+    "saved_search", "commute_destination", "user_session", "auth_token", "app_user", "listing_source",
 ]
 
 
 def _user(tx: Tx, email: str, name: str) -> UUID:
-    user = UserMapper(tx).insert(email + DOMAIN, password_hash(PASSWORD), name)
+    user = UserMapper(tx).insert(email + DOMAIN, password_hash(PASSWORD), name, verified=True)
     return user.id
 
 
