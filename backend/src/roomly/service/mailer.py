@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 TEMPLATES = {"verify_email": "verify-email", "reset_password": "reset-password"}
 SEND_TIMEOUT_SECONDS = 5.0
+# Cloudflare answers the default "Python-urllib/x.y" agent with error 1010 before the Worker runs,
+# so every request names itself.
+USER_AGENT = "roomly-api"
 
 
 class MailError(Exception):
@@ -69,7 +72,7 @@ class HttpMailer:
         signature = hmac.new(self.secret, timestamp.encode() + b"." + body, hashlib.sha256).hexdigest()
         request = urllib.request.Request(
             self.endpoint, data=body, method="POST",
-            headers={"Content-Type": "application/json", "X-Roomly-Timestamp": timestamp,
+            headers={"Content-Type": "application/json", "User-Agent": USER_AGENT, "X-Roomly-Timestamp": timestamp,
                      "X-Roomly-Signature": f"v1={signature}"})
         started = time.monotonic()
         try:
