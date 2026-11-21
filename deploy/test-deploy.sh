@@ -33,6 +33,12 @@ failures=0
 check() { # check <description> <actual> <expected>
   if [[ "$2" == "$3" ]]; then printf 'ok   %s\n' "$1"; else printf 'FAIL %s: got [%s] want [%s]\n' "$1" "$2" "$3"; failures=$((failures + 1)); fi
 }
+for script in deploy.sh deploy-to-host.sh test-deploy.sh; do
+  # CI runs these by path; a script committed without the executable bit dies with exit 126.
+  mode="$(git -C "$HERE" ls-files -s -- "$script" 2>/dev/null | cut -c1-6)"
+  [[ -z "$mode" || "$mode" == 100755 ]] && echo "ok   $script is executable in git" || { echo "FAIL $script is mode $mode in git, needs 100755"; failures=$((failures + 1)); }
+done
+
 deploy() { SSH_ORIGINAL_COMMAND="$1" bash "$HERE/deploy.sh" >"$TMP/out" 2>&1 && echo 0 || echo $?; }
 count() { grep -c -- "$1" "$DOCKER_LOG" || true; }
 fresh() { printf '%s\n' "$1" >"$WORK/.current"; : >"$DOCKER_LOG"; }
