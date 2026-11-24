@@ -43,6 +43,11 @@ export async function accountRequest(path, { method = "GET", body, token } = {})
   return res.status === 204 ? null : res.json();
 }
 
+export const getListing = (id) => accountRequest(`/listings/${encodeURIComponent(id)}`);
+
+export const reportListing = (request, id, body) =>
+  request(`/listings/${encodeURIComponent(id)}/reports`, { method: "POST", body });
+
 // Email confirmation and password reset. The two "send" calls answer 202 whether or not the address
 // has an account, so callers must show the same message either way.
 export const signUp = (body) => accountRequest("/auth/sign-up", { method: "POST", body });

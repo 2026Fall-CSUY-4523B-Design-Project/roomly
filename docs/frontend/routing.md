@@ -6,14 +6,15 @@ and imports `styles/globals.css` — that is the only place global CSS is loaded
 | Route | File | Purpose |
 | --- | --- | --- |
 | `/` | `pages/index.js` | Dashboard: filters + matching listings (UC-3, R-3.1). Guests allowed. |
+| `/listings/[id]` | `pages/listings/[id].js` | Guest listing details, provenance, conflicts, price history and signed-in reports. |
 | `/sign-in` | `pages/sign-in.js` | `<AuthForm />` |
 | `/sign-up` | `pages/sign-up.js` | `<AuthForm signUp />`; success shows "Check your email" (no session yet) |
 | `/verify-email` | `pages/verify-email.js` | target of the emailed link; confirms once on load |
 | `/forgot-password` | `pages/forgot-password.js` | asks for a reset link |
 | `/reset-password` | `pages/reset-password.js` | target of the reset link; chooses a new password |
 
-No other routes exist. `Header` links to `/compare`, `/groups` and `/notifications`, and
-`ListingCard` links to `/listings/<id>`; all four 404 until those slices land. When adding one, add
+No other routes exist. `Header` links to `/compare`, `/groups` and `/notifications`; these three routes
+404 until those slices land. `ListingCard` links to the implemented `/listings/<id>` page. When adding one, add
 the page and keep the header link — the navigation is the product spec.
 
 ## Page shape
@@ -59,3 +60,16 @@ response (`limit`/`offset` are always sent) but there is no pager UI yet.
 - signed out → a Sign in button
 
 Auth errors surface as an inline `role="alert"` span next to the nav rather than as a redirect.
+
+## Listing detail
+
+`/listings/[id]` fetches the guest listing card through `getListing`. Loading, missing/invalid IDs,
+retryable errors and route changes are handled without retaining the previous listing. The page
+shows costs, lease terms, amenities, sources with HTTP(S) links and collection times, conflicting
+values, price history, and monthly rent per square foot. Null values remain Unknown, and
+merged listings link to the surviving listing. Money is displayed with cent precision.
+
+`ListingReport` offers signed-in users the four API report reasons and optional details (up to
+2,000 characters), with pending, success and error states. Guests get a sign-in link. Requests
+use `useAuth().authenticatedRequest`, which supplies the session token and clears expired sessions
+on a 401 without components accessing browser storage.

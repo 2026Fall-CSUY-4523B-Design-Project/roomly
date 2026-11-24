@@ -13,7 +13,7 @@ prod alike, and no CORS is configured anywhere. Consequences:
 
 ## `lib/api.js`
 
-Two entry points; everything HTTP-related lives here.
+HTTP helpers and endpoint wrappers live here.
 
 `searchListings(filters, { sort = "newest", limit = 20, offset = 0 })` → `GET /api/search`.
 Filters are the object from `FilterPanel.toSearchParams`:
@@ -52,3 +52,9 @@ Field names in the UI come straight from the response DTOs (`ListingSummaryDTO` 
 integer cents, ISO dates, `null` for unknown. `lib/format.js` owns the display translation — see
 [ui.md](ui.md). When a DTO gains a field, render it through a `format*` helper so unknown values keep
 their "Unknown" label.
+
+## Listing details and reports
+
+`getListing(id)` reads `GET /listings/{id}` with structured status errors through `accountRequest`.
+`reportListing(authenticatedRequest, id, body)` posts `{reason, details}` to the report endpoint
+using the authenticated request function supplied by `useAuth()`. IDs are URL-encoded.
