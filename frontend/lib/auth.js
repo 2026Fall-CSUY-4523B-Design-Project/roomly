@@ -70,7 +70,20 @@ export function AuthProvider({ children }) {
     }
   }
 
-  return <AuthContext.Provider value={{ user: session?.user, loading, error, signIn, signOut }}>{children}</AuthContext.Provider>;
+  async function authenticatedRequest(path, options = {}) {
+    if (!session) throw new Error("Please sign in to continue.");
+    try {
+      return await accountRequest(path, { ...options, token: session.token });
+    } catch (err) {
+      if (err.status === 401) {
+        clearSession();
+        setError("Your session has expired. Please sign in again.");
+      }
+      throw err;
+    }
+  }
+
+  return <AuthContext.Provider value={{ user: session?.user, loading, error, signIn, signOut, authenticatedRequest }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

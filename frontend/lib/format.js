@@ -1,5 +1,25 @@
 export const UNKNOWN = "Unknown";
 
+export function formatMoney(cents) {
+  if (cents === null || cents === undefined) return UNKNOWN;
+  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+export function formatTimestamp(iso) {
+  if (!iso) return UNKNOWN;
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? UNKNOWN : date.toLocaleString("en-US", { timeZoneName: "short" });
+}
+
+export function formatListingValue(field, value) {
+  if (value === null || value === undefined) return UNKNOWN;
+  if (field.endsWith("_cents")) return formatMoney(value);
+  if (field === "borough") return boroughLabel(value);
+  if (field === "move_in_date") return formatDate(value);
+  if (Array.isArray(value)) return value.map(formatAmenity).join(", ") || "None listed";
+  return String(value);
+}
+
 export const BOROUGHS = [
   { value: "manhattan", label: "Manhattan" },
   { value: "brooklyn", label: "Brooklyn" },

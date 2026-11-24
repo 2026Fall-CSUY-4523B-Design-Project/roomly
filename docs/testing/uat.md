@@ -37,7 +37,7 @@ email delivery, URL import and data export. (Verification and password-reset ema
 
 ### Frontend coverage in 3.x
 
-The backend implements all 56 endpoints, but the browser currently ships only the search dashboard
+The backend implements all 56 endpoints, but the browser currently ships the search dashboard, listing detail
 and the account pages. A case whose journey needs a page that does not exist yet is executed through
 `/docs` (Swagger UI) against the same API and recorded as **API pass**; the UI part is recorded as
 **Blocked** and stays open until the page lands. A major release that claims the page must make its
@@ -48,7 +48,7 @@ UI case pass.
 | `/` | available | UAT-UI-01, UAT-SEA-01 to 06 |
 | `/sign-up`, `/sign-in` | available | UAT-AUTH-01 to 06 |
 | `/verify-email`, `/forgot-password`, `/reset-password` | available | UAT-AUTH-11 to 16 |
-| `/listings/[id]` | not built | UAT-LST-05, UAT-UI-02 (API pass, UI blocked) |
+| `/listings/[id]` | available | UAT-LST-05, UAT-UI-02, UAT-UI-09 |
 | `/compare` | not built | UAT-CMP-01 to 07, UAT-UI-03 (API pass, UI blocked) |
 | `/groups` | not built | UAT-GRP-01 to 14, UAT-UI-04 (API pass, UI blocked) |
 | `/notifications` | not built | UAT-NOT-01 to 06, UAT-UI-05 (API pass, UI blocked) |
@@ -261,13 +261,19 @@ immediately; do not continue past a P1 in the same area.
 | ID | Role | Steps | Expected |
 | --- | --- | --- | --- |
 | UAT-UI-01 | Guest / signed in | Use every header link and the account area on a 1280px and a 390px viewport. | Search works for guests; signing in updates the header without a reload; sign-out restores **Sign in**; the layout is usable at both widths. |
-| UAT-UI-02 | Guest | Open a listing from the search results. | The detail page renders the card with sources, conflicts, price history and price per sq ft, and a back link. In 3.x this is **Blocked** until `pages/listings/[id].js` exists; record the API result from UAT-LST-05. |
+| UAT-UI-02 | Guest | Open a listing from the search results. | The detail page renders the card with sources, conflicts, price history and price per sq ft, and a back link. Null values read Unknown; zero fees display $0.00; merged listings link to the survivor. |
 | UAT-UI-03 | Signed in | Open `/compare`, select two listings, preview, save and share. | In 3.x the route is **Blocked**; execute UAT-CMP-01 to 07 through `/docs` and note the page gap. |
 | UAT-UI-04 | Signed in | Open `/groups`, create a group, invite, accept, transfer, leave. | In 3.x the route is **Blocked**; execute UAT-GRP-01 to 14 through `/docs`. |
 | UAT-UI-05 | Signed in | Open `/notifications`, mark one read, mark all read, open the settings. | In 3.x the route is **Blocked**; execute UAT-NOT-01 to 06 through `/docs`. |
 | UAT-UI-06 | Any | While signed out, open a group or notification page directly. | The app asks the user to sign in instead of showing data or a server error. Until the pages exist this is **Blocked**. |
 | UAT-UI-07 | Keyboard / screen reader | Tab through `/` and `/sign-in`: filters, apply, sort, cards, submit. | Focus is visible, every field has a label, the header and auth messages use `role="status"` / `role="alert"`, and the form can be completed without a mouse. |
 | UAT-UI-08 | Any | Stop the backend and reload `/`. | The dashboard shows "Could not load listings. Is the backend running on :8000?" and does not blank the page; restarting and reloading recovers. |
+
+Listing detail checks (UAT-UI-09): on desktop and mobile, open a seeded listing and an unknown ID;
+verify sources, timestamps, conflicts, empty history, and the missing-listing message. Stop the API,
+reload the detail page, restart the API and use Try again. As a guest, check the report sign-in prompt;
+as a signed-in user, submit each report reason with optional details and verify the confirmation and
+created report. Check pending submission, API failure, expired-session handling and keyboard access.
 
 ## 6. Traceability
 

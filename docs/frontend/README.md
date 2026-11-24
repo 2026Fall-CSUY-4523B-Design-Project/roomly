@@ -35,9 +35,8 @@ frontend/
 ## Status
 
 Implemented against the real API: search/dashboard (UC-3), sign-up with email confirmation, sign-in, password reset, sign-out, session
-restore. The backend now implements every use case, but the frontend has not caught up: compare,
-groups, notifications and the listing detail page have no route yet and 404, and those links are
-placeholders for later slices.
+restore, and listing detail (including sources, conflicts, price history and signed-in reports).
+Compare, groups and notifications have no route yet and 404; those links are placeholders for later slices.
 
 ## Conventions
 
