@@ -1,4 +1,5 @@
 import Link from "next/link";
+import CompareButton from "@/components/CompareButton";
 
 import {
   boroughLabel,
@@ -46,6 +47,7 @@ export default function ListingCard({ listing }) {
           ))}
         </ul>
       )}
+      <CompareButton listing={listing} />
     </article>
   );
 }

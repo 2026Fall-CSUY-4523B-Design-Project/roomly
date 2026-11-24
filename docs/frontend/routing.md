@@ -1,11 +1,12 @@
 # Routing and layout
 
-Pages router: one file per route under `pages/`. `pages/_app.js` wraps every page in `AuthProvider`
+Pages router: one file per route under `pages/`. `pages/_app.js` wraps every page in `AuthProvider` and `ComparisonProvider`
 and imports `styles/globals.css` — that is the only place global CSS is loaded.
 
 | Route | File | Purpose |
 | --- | --- | --- |
 | `/` | `pages/index.js` | Dashboard: filters + matching listings (UC-3, R-3.1). Guests allowed. |
+| `/compare` | `pages/compare.js` | Guest preview of 2–4 selected listings. |
 | `/listings/[id]` | `pages/listings/[id].js` | Guest listing details, provenance, conflicts, price history and signed-in reports. |
 | `/sign-in` | `pages/sign-in.js` | `<AuthForm />` |
 | `/sign-up` | `pages/sign-up.js` | `<AuthForm signUp />`; success shows "Check your email" (no session yet) |
@@ -13,7 +14,7 @@ and imports `styles/globals.css` — that is the only place global CSS is loaded
 | `/forgot-password` | `pages/forgot-password.js` | asks for a reset link |
 | `/reset-password` | `pages/reset-password.js` | target of the reset link; chooses a new password |
 
-No other routes exist. `Header` links to `/compare`, `/groups` and `/notifications`; these three routes
+No other routes exist. `Header` links to `/groups` and `/notifications`; these two routes
 404 until those slices land. `ListingCard` links to the implemented `/listings/<id>` page. When adding one, add
 the page and keep the header link — the navigation is the product spec.
 
@@ -73,3 +74,18 @@ merged listings link to the surviving listing. Money is displayed with cent prec
 2,000 characters), with pending, success and error states. Guests get a sign-in link. Requests
 use `useAuth().authenticatedRequest`, which supplies the session token and clears expired sessions
 on a 401 without components accessing browser storage.
+
+## Guest comparison
+
+`ComparisonProvider` retains up to four unique listing IDs and display titles across routes and
+stores them in per-tab `sessionStorage` under `roomly.comparison`. If storage is unavailable,
+selection still works in memory. Search cards and listing details offer a toggle; at four selections,
+unselected toggles are disabled. The shared header shows the count, selected listings, removal and
+clear controls, and a link to `/compare`.
+
+`/compare` requests a fresh preview when at least two listings are selected. Empty/one-listing states,
+loading, retryable errors and missing listings keep selection controls available. Old responses are
+ignored after selection changes. The table uses API `known`, `best`, and direction fields; bathrooms,
+amenities and availability are additional unranked rows from the returned listing summaries. The
+region scrolls horizontally on narrow screens and supports keyboard focus. Saving and sharing
+comparisons remain future slices.

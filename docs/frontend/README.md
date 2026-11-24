@@ -23,9 +23,9 @@ script/frontend.sh start   # serve a previous build (prod)
 
 ```
 frontend/
-  pages/       _app.js (providers + CSS), index.js (dashboard), sign-in.js, sign-up.js, verify-email.js, forgot-password.js, reset-password.js
-  components/  Header, AuthForm, AuthPage, ResendVerification, FilterPanel, ListingCard
-  lib/         api.js (HTTP), auth.js (session), token.js (emailed-link token), format.js (display helpers)
+  pages/       _app.js (providers + CSS), index.js (dashboard), compare.js, listings/[id].js, sign-in.js, sign-up.js, verify-email.js, forgot-password.js, reset-password.js
+  components/  Header, AuthForm, AuthPage, ResendVerification, FilterPanel, ListingCard, CompareButton, ComparisonSelection
+  lib/         api.js (HTTP), auth.js (session), comparison.js (guest selection), token.js (emailed-link token), format.js (display helpers)
   styles/      globals.css — the whole stylesheet
   next.config.js  /api/* rewrite; jsconfig.json  @/* → frontend/
 ```
@@ -35,8 +35,8 @@ frontend/
 ## Status
 
 Implemented against the real API: search/dashboard (UC-3), sign-up with email confirmation, sign-in, password reset, sign-out, session
-restore, and listing detail (including sources, conflicts, price history and signed-in reports).
-Compare, groups and notifications have no route yet and 404; those links are placeholders for later slices.
+restore, guest comparison of 2–4 listings, and listing detail (including sources, conflicts, price history and signed-in reports).
+Groups and notifications have no route yet and 404; those links are placeholders for later slices.
 
 ## Conventions
 

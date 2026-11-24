@@ -15,6 +15,7 @@ export function formatListingValue(field, value) {
   if (value === null || value === undefined) return UNKNOWN;
   if (field.endsWith("_cents")) return formatMoney(value);
   if (field === "borough") return boroughLabel(value);
+  if (field === "availability") return formatAmenity(value);
   if (field === "move_in_date") return formatDate(value);
   if (Array.isArray(value)) return value.map(formatAmenity).join(", ") || "None listed";
   return String(value);
