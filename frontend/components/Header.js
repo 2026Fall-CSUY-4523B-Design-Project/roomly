@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import ComparisonSelection from "@/components/ComparisonSelection";
+
 import { useAuth } from "@/lib/auth";
 
 // Search and account routes are implemented; collaboration routes are planned.
@@ -12,6 +14,7 @@ export default function Header() {
     try { await signOut(); } finally { setPending(false); }
   }
   return (
+    <>
     <header className="header">
       <Link href="/">
         <a className="brand">Roomly</a>
@@ -36,5 +39,7 @@ export default function Header() {
         {error && <span className="error" role="alert">{error}</span>}
       </nav>
     </header>
+    <ComparisonSelection />
+    </>
   );
 }

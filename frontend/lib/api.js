@@ -57,3 +57,6 @@ export const resendVerification = (email) =>
 export const forgotPassword = (email) => accountRequest("/auth/forgot-password", { method: "POST", body: { email } });
 export const resetPassword = (token, password) =>
   accountRequest("/auth/reset-password", { method: "POST", body: { token, password } });
+
+export const previewComparison = (listingIds) =>
+  accountRequest("/comparisons/preview", { method: "POST", body: { listing_ids: listingIds } });

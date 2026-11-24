@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
+import CompareButton from "@/components/CompareButton";
 import Header from "@/components/Header";
 import ListingReport from "@/components/ListingReport";
 import { getListing } from "@/lib/api";
@@ -71,6 +72,7 @@ export default function ListingDetail() {
               </div>
             </div>
             <h1>{title}</h1>
+            <CompareButton listing={listing} showCompareLink />
             <p>{[listing.address_line, listing.unit && `Unit ${listing.unit}`, boroughLabel(listing.borough), listing.postal_code].filter(Boolean).join(", ")}</p>
             <p>{formatBedrooms(listing.bedrooms)} · {formatBathrooms(listing.bathrooms)} · {formatArea(listing.area_sqft)}</p>
             <p className="muted">Updated {formatTimestamp(listing.updated_at)}</p>

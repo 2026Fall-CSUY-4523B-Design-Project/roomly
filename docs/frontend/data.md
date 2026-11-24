@@ -58,3 +58,10 @@ their "Unknown" label.
 `getListing(id)` reads `GET /listings/{id}` with structured status errors through `accountRequest`.
 `reportListing(authenticatedRequest, id, body)` posts `{reason, details}` to the report endpoint
 using the authenticated request function supplied by `useAuth()`. IDs are URL-encoded.
+
+## Guest comparison
+
+`previewComparison(listingIds)` posts `{listing_ids}` to `/comparisons/preview` without a token.
+The UI requests previews for 2–4 unique selections. Response rows are aligned by `listing_id`;
+`known: false` displays Unknown and `best: true` is highlighted only for known values. Monetary
+values retain cent precision. Commute remains Unknown, with the API note explaining availability.

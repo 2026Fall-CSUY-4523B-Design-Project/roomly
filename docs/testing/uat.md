@@ -37,7 +37,7 @@ email delivery, URL import and data export. (Verification and password-reset ema
 
 ### Frontend coverage in 3.x
 
-The backend implements all 56 endpoints, but the browser currently ships the search dashboard, listing detail
+The backend implements all 56 endpoints, but the browser currently ships the search dashboard, listing detail, guest comparison
 and the account pages. A case whose journey needs a page that does not exist yet is executed through
 `/docs` (Swagger UI) against the same API and recorded as **API pass**; the UI part is recorded as
 **Blocked** and stays open until the page lands. A major release that claims the page must make its
@@ -49,7 +49,7 @@ UI case pass.
 | `/sign-up`, `/sign-in` | available | UAT-AUTH-01 to 06 |
 | `/verify-email`, `/forgot-password`, `/reset-password` | available | UAT-AUTH-11 to 16 |
 | `/listings/[id]` | available | UAT-LST-05, UAT-UI-02, UAT-UI-09 |
-| `/compare` | not built | UAT-CMP-01 to 07, UAT-UI-03 (API pass, UI blocked) |
+| `/compare` | guest preview available; save/share not built | UAT-CMP-01 to 03, UAT-UI-03 |
 | `/groups` | not built | UAT-GRP-01 to 14, UAT-UI-04 (API pass, UI blocked) |
 | `/notifications` | not built | UAT-NOT-01 to 06, UAT-UI-05 (API pass, UI blocked) |
 
@@ -262,7 +262,7 @@ immediately; do not continue past a P1 in the same area.
 | --- | --- | --- | --- |
 | UAT-UI-01 | Guest / signed in | Use every header link and the account area on a 1280px and a 390px viewport. | Search works for guests; signing in updates the header without a reload; sign-out restores **Sign in**; the layout is usable at both widths. |
 | UAT-UI-02 | Guest | Open a listing from the search results. | The detail page renders the card with sources, conflicts, price history and price per sq ft, and a back link. Null values read Unknown; zero fees display $0.00; merged listings link to the survivor. |
-| UAT-UI-03 | Signed in | Open `/compare`, select two listings, preview, save and share. | In 3.x the route is **Blocked**; execute UAT-CMP-01 to 07 through `/docs` and note the page gap. |
+| UAT-UI-03 | Guest / signed in | Select 2–4 listings from search or details, open `/compare`, remove listings and clear selection. | Preview works without authentication. Selection survives route changes and reloads. A fifth selection is disabled. Unknown values and API best-value indicators render correctly. Saving/sharing remains API-only. |
 | UAT-UI-04 | Signed in | Open `/groups`, create a group, invite, accept, transfer, leave. | In 3.x the route is **Blocked**; execute UAT-GRP-01 to 14 through `/docs`. |
 | UAT-UI-05 | Signed in | Open `/notifications`, mark one read, mark all read, open the settings. | In 3.x the route is **Blocked**; execute UAT-NOT-01 to 06 through `/docs`. |
 | UAT-UI-06 | Any | While signed out, open a group or notification page directly. | The app asks the user to sign in instead of showing data or a server error. Until the pages exist this is **Blocked**. |
@@ -274,6 +274,13 @@ verify sources, timestamps, conflicts, empty history, and the missing-listing me
 reload the detail page, restart the API and use Try again. As a guest, check the report sign-in prompt;
 as a signed-in user, submit each report reason with optional details and verify the confirmation and
 created report. Check pending submission, API failure, expired-session handling and keyboard access.
+
+Guest comparison checks: open `/compare` with zero and one selection; confirm no preview is requested.
+Select four listings across searches, verify a fifth cannot be added, then remove one and add another.
+Check cents, zero fees, tied values (no Best badge), and Unknowns. Change selection during a slow
+request; the old result must not replace the new selection. Stop the API and retry after restarting.
+Confirm a missing listing can be removed using the selection bar. Test at 390px and with keyboard
+navigation, including horizontal table scrolling. Verify reload persistence and clear selection.
 
 ## 6. Traceability
 
