@@ -17,7 +17,7 @@ export default function ListingCard({ listing }) {
   const address = [listing.address_line, listing.unit && `Unit ${listing.unit}`].filter(Boolean).join(", ");
 
   return (
-    <article className="card">
+    <article className="card listing-card">
       <div className="card-top">
         <span className="rent">{formatRent(listing.advertised_rent_cents)}</span>
         <span className="tags">
@@ -27,8 +27,9 @@ export default function ListingCard({ listing }) {
       </div>
 
       <h3 className="card-title">
+        {/* The title link stretches over the whole card, so anywhere on it opens the listing. */}
         <Link href={`/listings/${listing.id}`}>
-          <a>{title}</a>
+          <a className="listing-card-link">{title}</a>
         </Link>
       </h3>
       <p className="muted">
@@ -47,7 +48,10 @@ export default function ListingCard({ listing }) {
           ))}
         </ul>
       )}
-      <CompareButton listing={listing} />
+      <div className="listing-card-footer">
+        <CompareButton listing={listing} />
+        <span className="listing-card-cta" aria-hidden="true">View details →</span>
+      </div>
     </article>
   );
 }
