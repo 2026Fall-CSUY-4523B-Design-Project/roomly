@@ -23,19 +23,24 @@ export default function AuthForm({ signUp = false }) {
     const data = new FormData(event.currentTarget);
     const body = { email: data.get("email"), password: data.get("password") };
     if (signUp && data.get("display_name").trim()) body.display_name = data.get("display_name").trim();
+    let left = false;
     try {
       if (signUp) {
         const result = await createAccount(body);
         setUnconfirmed({ email: result.email, sent: result.verification_sent, fresh: true });
       } else {
         await signIn("/auth/sign-in", body);
-        await router.replace("/");
+        const next = router.query.next;
+        const allowed = typeof next === "string" && /^\/(?:compare|comparisons(?:\/[a-f0-9-]+)?|notifications(?:\/preferences)?)$/.test(next);
+        await router.replace(allowed ? next : "/");
+        left = true;
       }
     } catch (err) {
       if (err.code === "email_not_verified") setUnconfirmed({ email: body.email.trim().toLowerCase(), sent: false, fresh: false });
       else setError(err.message || "Could not connect. Please try again.");
     } finally {
-      setPending(false);
+      // After a successful sign-in the form has unmounted with the navigation.
+      if (!left) setPending(false);
     }
   }
 
