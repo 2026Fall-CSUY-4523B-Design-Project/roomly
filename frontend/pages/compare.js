@@ -2,6 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import GroupPicker from "@/components/GroupPicker";
 import Header from "@/components/Header";
 import { previewComparison } from "@/lib/api";
 import { comparisonTitle, useComparison } from "@/lib/comparison";
@@ -104,6 +105,13 @@ export default function Compare() {
           <span role="status" className="muted">
             {refreshing ? "Updating comparison…" : onlyDifferences && hiddenCount ? `${hiddenCount} identical ${hiddenCount === 1 ? "row" : "rows"} hidden` : ""}
           </span>
+          <div className="comparison-share">
+            <GroupPicker label="Share to group" confirmLabel="Share and discuss" withTitle
+              onConfirm={async (request, groupId, { title }) => {
+                const saved = await request("/comparisons", { method: "POST", body: { listing_ids: ids, group_id: groupId, title } });
+                return { pathname: "/groups/[id]", query: { id: groupId, comparison: saved.id } };
+              }} />
+          </div>
         </div>
         <div ref={region} className={`comparison-table-wrap${refreshing ? " refreshing" : ""}`} role="region"
           aria-label="Listing comparison table" aria-busy={refreshing} tabIndex={0}>

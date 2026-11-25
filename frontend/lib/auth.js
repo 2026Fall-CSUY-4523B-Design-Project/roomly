@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 import { accountRequest } from "@/lib/api";
 
@@ -70,18 +70,21 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function authenticatedRequest(path, options = {}) {
-    if (!session) throw new Error("Please sign in to continue.");
+  // Stable per session so data hooks that depend on it don't refetch on unrelated provider renders.
+  const token = session?.token;
+  const authenticatedRequest = useCallback(async (path, options = {}) => {
+    if (!token) throw new Error("Please sign in to continue.");
     try {
-      return await accountRequest(path, { ...options, token: session.token });
+      return await accountRequest(path, { ...options, token });
     } catch (err) {
       if (err.status === 401) {
-        clearSession();
+        sessionStorage.removeItem(STORAGE_KEY);
+        setSession(null);
         setError("Your session has expired. Please sign in again.");
       }
       throw err;
     }
-  }
+  }, [token]);
 
   return <AuthContext.Provider value={{ user: session?.user, loading, error, signIn, signOut, authenticatedRequest }}>{children}</AuthContext.Provider>;
 }

@@ -6,17 +6,17 @@ and imports `styles/globals.css` — that is the only place global CSS is loaded
 | Route | File | Purpose |
 | --- | --- | --- |
 | `/` | `pages/index.js` | Dashboard: filters + matching listings (UC-3, R-3.1). Guests allowed. |
-| `/compare` | `pages/compare.js` | Guest preview of 2–4 selected listings. |
+| `/compare` | `pages/compare.js` | Guest preview of 2–4 selected listings; signed-in renters can **Share to group**. |
 | `/listings/[id]` | `pages/listings/[id].js` | Guest listing details, provenance, conflicts, price history and signed-in reports. |
+| `/groups` | `pages/groups/index.js` | Group directory, creation and incoming invitations. |
+| `/groups/[id]` | `pages/groups/[id].js` | Membership, sent invitations, shared comparisons, messages and polls. |
 | `/sign-in` | `pages/sign-in.js` | `<AuthForm />` |
 | `/sign-up` | `pages/sign-up.js` | `<AuthForm signUp />`; success shows "Check your email" (no session yet) |
 | `/verify-email` | `pages/verify-email.js` | target of the emailed link; confirms once on load |
 | `/forgot-password` | `pages/forgot-password.js` | asks for a reset link |
 | `/reset-password` | `pages/reset-password.js` | target of the reset link; chooses a new password |
 
-No other routes exist. `Header` links to `/groups` and `/notifications`; these two routes
-404 until those slices land. `ListingCard` links to the implemented `/listings/<id>` page. When adding one, add
-the page and keep the header link — the navigation is the product spec.
+The Notifications header link still points to an unimplemented route. Signed-in renters start a listing thread from listing detail via **Discuss with a group**, and a comparison thread from `/compare` via **Share to group**; both open `/groups/[id]` with `?listing=` or `?comparison=` preselecting the thread. Room messages and poll totals can be refreshed on demand.
 
 ## Page shape
 

@@ -36,7 +36,7 @@ frontend/
 
 Implemented against the real API: search/dashboard (UC-3), sign-up with email confirmation, sign-in, password reset, sign-out, session
 restore, guest comparison of 2–4 listings, and listing detail (including sources, conflicts, price history and signed-in reports).
-Groups and notifications have no route yet and 404; those links are placeholders for later slices.
+Groups supports invitations, membership, shared comparisons, discussion threads, reactions and polls. Notifications is still a placeholder.
 
 ## Conventions
 
