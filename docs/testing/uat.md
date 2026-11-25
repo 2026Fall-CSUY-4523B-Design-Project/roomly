@@ -49,9 +49,9 @@ UI case pass.
 | `/sign-up`, `/sign-in` | available | UAT-AUTH-01 to 06 |
 | `/verify-email`, `/forgot-password`, `/reset-password` | available | UAT-AUTH-11 to 16 |
 | `/listings/[id]` | available | UAT-LST-05, UAT-UI-02, UAT-UI-09 |
-| `/compare` | guest preview and share to group available; personal save not built | UAT-CMP-01 to 03, UAT-UI-03 |
+| `/compare` | guest preview, personal save and group sharing available | UAT-CMP-01 to 03, UAT-UI-03 |
 | `/groups`, `/groups/[id]` | available | UAT-GRP-01 to 14, UAT-ROOM-01 to 08, UAT-UI-04 |
-| `/notifications` | not built | UAT-NOT-01 to 06, UAT-UI-05 (API pass, UI blocked) |
+| `/notifications` | available, including preferences | UAT-NOT-01 to 06, UAT-UI-05 |
 
 ## 2. Environment and data
 
@@ -262,10 +262,10 @@ immediately; do not continue past a P1 in the same area.
 | --- | --- | --- | --- |
 | UAT-UI-01 | Guest / signed in | Use every header link and the account area on a 1280px and a 390px viewport. | Search works for guests; signing in updates the header without a reload; sign-out restores **Sign in**; the layout is usable at both widths. |
 | UAT-UI-02 | Guest | Open a listing from the search results. | The detail page renders the card with sources, conflicts, price history and price per sq ft, and a back link. Null values read Unknown; zero fees display $0.00; merged listings link to the survivor. |
-| UAT-UI-03 | Guest / signed in | Select 2–4 listings from search or details, open `/compare`, remove listings and clear selection. | Preview works without authentication. Selection survives route changes and reloads. A fifth selection is disabled. Unknown values and API best-value indicators render correctly. Signed in, **Share to group** saves the comparison to the chosen group and opens its thread. Personal saving remains API-only. |
+| UAT-UI-03 | Guest / signed in | Select 2–4 listings from search or details, open `/compare`, remove listings and clear selection. | Preview works without authentication. Selection survives route changes and reloads. A fifth selection is disabled. Unknown values and API best-value indicators render correctly. Signed in, **Share to group** saves the comparison to the chosen group and opens its thread. Save a personal comparison, reopen it from My comparisons, then share the saved record into a group. |
 | UAT-UI-04 | Signed in | Open `/groups`, create a group, invite, accept, transfer, leave. | Members see their groups. Owner controls update after transfer, and leaving returns to the directory. |
-| UAT-UI-05 | Signed in | Open `/notifications`, mark one read, mark all read, open the settings. | In 3.x the route is **Blocked**; execute UAT-NOT-01 to 06 through `/docs`. |
-| UAT-UI-06 | Any | While signed out, open a group or notification page directly. | The app asks the user to sign in instead of showing data or a server error. The group routes are available. The notifications route remains blocked. |
+| UAT-UI-05 | Signed in | Open `/notifications`, mark one read, mark all read, open the settings. | Unread totals and read states update. Saved alert and delivery preferences survive reload. |
+| UAT-UI-06 | Any | While signed out, open a group or notification page directly. | The app asks the user to sign in instead of showing data or a server error. Both routes offer sign-in. |
 | UAT-UI-07 | Keyboard / screen reader | Tab through `/` and `/sign-in`: filters, apply, sort, cards, submit. | Focus is visible, every field has a label, the header and auth messages use `role="status"` / `role="alert"`, and the form can be completed without a mouse. |
 | UAT-UI-08 | Any | Stop the backend and reload `/`. | The dashboard shows "Could not load listings. Is the backend running on :8000?" and does not blank the page; restarting and reloading recovers. |
 

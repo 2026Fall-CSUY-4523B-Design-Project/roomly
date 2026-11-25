@@ -2,20 +2,12 @@ import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import SaveComparison from "@/components/SaveComparison";
 import GroupPicker from "@/components/GroupPicker";
 import Header from "@/components/Header";
 import { previewComparison } from "@/lib/api";
-import { comparisonTitle, useComparison } from "@/lib/comparison";
+import { comparisonRows, comparisonTitle, useComparison } from "@/lib/comparison";
 import { UNKNOWN, formatListingValue } from "@/lib/format";
-
-// R-4: best/known flags come from the API; supplementary summary fields have no ranking.
-const SUMMARY_ROWS = [["bathrooms", "Bathrooms"], ["amenities", "Amenities"], ["availability", "Availability"]];
-
-function buildRows(table) {
-  return [...table.rows, ...SUMMARY_ROWS.map(([key, label]) => ({ key, label, cells: table.listings.map((listing) => ({
-    listing_id: listing.id, known: listing[key] != null, value: listing[key], best: false,
-  })) }))];
-}
 
 const cellText = (row, cell) => cell?.known && cell.value != null ? formatListingValue(row.key, cell.value) : UNKNOWN;
 
@@ -57,7 +49,7 @@ export default function Compare() {
   const covers = result?.table && ids.every((id) => result.table.listings.some((listing) => listing.id === id));
   const table = covers ? result.table : null;
   const listings = table ? ids.map((id) => table.listings.find((listing) => listing.id === id)) : [];
-  const allRows = table ? buildRows(table) : [];
+  const allRows = table ? comparisonRows(table) : [];
   const rows = onlyDifferences
     ? allRows.filter((row) => new Set(listings.map((listing) => cellText(row, row.cells.find((cell) => cell.listing_id === listing.id)))).size > 1)
     : allRows;
@@ -75,7 +67,10 @@ export default function Compare() {
     <Header />
     <main className="comparison-page">
       <Link href="/"><a className="back-link">← Back to listings</a></Link>
-      <h1>Compare listings</h1>
+      <div className="comparison-title">
+        <h1>Compare listings</h1>
+        <Link href="/comparisons"><a className="button secondary">My comparisons</a></Link>
+      </div>
       {!ready ? <p role="status">Loading selection…</p> : selected.length < 2 ? (
         <section className="card comparison-state">
           <h2>{selected.length ? "Choose one more listing" : "No listings selected"}</h2>
@@ -106,6 +101,7 @@ export default function Compare() {
             {refreshing ? "Updating comparison…" : onlyDifferences && hiddenCount ? `${hiddenCount} identical ${hiddenCount === 1 ? "row" : "rows"} hidden` : ""}
           </span>
           <div className="comparison-share">
+            <SaveComparison key={selectionKey} ids={ids} />
             <GroupPicker label="Share to group" confirmLabel="Share and discuss" withTitle
               onConfirm={async (request, groupId, { title }) => {
                 const saved = await request("/comparisons", { method: "POST", body: { listing_ids: ids, group_id: groupId, title } });
@@ -129,7 +125,7 @@ export default function Compare() {
                 aria-label={`Remove ${comparisonTitle(listing)} from comparison`}>Remove</button>
             </th>)}</tr></thead>
             <tbody>{rows.length ? rows.map((row) => <tr key={row.key}>
-              <th scope="row">{row.label}{row.direction && <span className="comparison-hint">{row.direction === "lower" ? "Lower" : "Higher"} is better</span>}</th>
+              <th scope="row">{row.label}{row.formula && <small className="comparison-hint">{row.formula}</small>}{row.direction && <span className="comparison-hint">{row.direction === "lower" ? "Lower" : "Higher"} is better</span>}</th>
               {listings.map((listing) => {
                 const cell = row.cells.find((item) => item.listing_id === listing.id);
                 const best = cell?.known && cell.value != null && cell.best && !refreshing;

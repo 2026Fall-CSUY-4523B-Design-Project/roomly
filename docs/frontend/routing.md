@@ -10,13 +10,15 @@ and imports `styles/globals.css` — that is the only place global CSS is loaded
 | `/listings/[id]` | `pages/listings/[id].js` | Guest listing details, provenance, conflicts, price history and signed-in reports. |
 | `/groups` | `pages/groups/index.js` | Group directory, creation and incoming invitations. |
 | `/groups/[id]` | `pages/groups/[id].js` | Membership, sent invitations, shared comparisons, messages and polls. |
+| `/comparisons`, `/comparisons/[id]` | `pages/comparisons/` | Personal library, changed or removed listings, and sharing a saved comparison. |
+| `/notifications`, `/notifications/preferences` | `pages/notifications/` | Inbox, read actions, alert types and delivery preferences. |
 | `/sign-in` | `pages/sign-in.js` | `<AuthForm />` |
 | `/sign-up` | `pages/sign-up.js` | `<AuthForm signUp />`; success shows "Check your email" (no session yet) |
 | `/verify-email` | `pages/verify-email.js` | target of the emailed link; confirms once on load |
 | `/forgot-password` | `pages/forgot-password.js` | asks for a reset link |
 | `/reset-password` | `pages/reset-password.js` | target of the reset link; chooses a new password |
 
-The Notifications header link still points to an unimplemented route. Signed-in renters start a listing thread from listing detail via **Discuss with a group**, and a comparison thread from `/compare` via **Share to group**; both open `/groups/[id]` with `?listing=` or `?comparison=` preselecting the thread. Room messages and poll totals can be refreshed on demand.
+Signed-in renters start a listing thread from listing detail via **Discuss with a group**, and a comparison thread from `/compare` via **Share to group**; both open `/groups/[id]` with `?listing=` or `?comparison=` preselecting the thread. Room messages and poll totals can be refreshed on demand.
 
 ## Page shape
 
@@ -87,5 +89,4 @@ clear controls, and a link to `/compare`.
 loading, retryable errors and missing listings keep selection controls available. Old responses are
 ignored after selection changes. The table uses API `known`, `best`, and direction fields; bathrooms,
 amenities and availability are additional unranked rows from the returned listing summaries. The
-region scrolls horizontally on narrow screens and supports keyboard focus. Saving and sharing
-comparisons remain future slices.
+region scrolls horizontally on narrow screens and supports keyboard focus. Signed-in users can save personal comparisons and share them with a group.

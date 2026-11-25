@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Avatar, Feedback, When, useGroupData } from "@/components/GroupWorkspace";
 import { getListing } from "@/lib/api";
 import { comparisonTitle } from "@/lib/comparison";
-import { UNKNOWN, formatListingValue } from "@/lib/format";
+import SavedComparisonTable from "@/components/SavedComparisonTable";
 
 const PAGE = 20;
 const DEFAULT_REACTIONS = ["👍", "❤️", "🎉"];
@@ -14,39 +14,7 @@ function SharedComparison({ id }) {
   const state = useGroupData(load);
   const comparison = state.data;
   if (!comparison) return <Feedback state={state} />;
-  const { listings, rows, notes } = comparison.table;
-  const titleOf = listingId => {
-    const listing = listings.find(item => item.id === listingId);
-    return listing ? comparisonTitle(listing) : "A listing";
-  };
-  const changes = comparison.changes.filter(change => change.state !== "unchanged");
-  return <div className="group-comparison"><Feedback state={state} />
-    <details className="group-comparison-details">
-    <summary><strong>{comparison.title || "Shared comparison"}</strong> <span className="muted">· {listings.length} listings · saved by {comparison.saved_by.name}</span></summary>
-    {changes.length > 0 && <ul className="group-changes" aria-label="Changes since this comparison was saved">{changes.map(change => <li key={change.listing_id}>
-      <strong>{titleOf(change.listing_id)}</strong> {change.state === "removed" ? "is no longer available"
-        : "changed" + (change.changed_fields.length ? ": " + change.changed_fields.join(", ").replace(/_/g, " ") : "")}
-    </li>)}</ul>}
-    <div className="comparison-table-wrap" role="region" aria-label="Shared comparison table" tabIndex={0}>
-      <table className="comparison-table"><caption className="visually-hidden">{comparison.title || "Shared comparison"}. Cells marked Best have the best value in their row.</caption>
-        <thead><tr><th scope="col">Attribute</th>{listings.map(item => <th scope="col" key={item.id}>
-          <Link href={"/listings/" + item.id}><a>{comparisonTitle(item)}</a></Link></th>)}</tr></thead>
-        <tbody>{rows.map(row => <tr key={row.key}>
-          <th scope="row">{row.label}{row.direction && <span className="comparison-hint">{row.direction === "lower" ? "Lower" : "Higher"} is better</span>}</th>
-          {listings.map(item => {
-            const cell = row.cells.find(entry => entry.listing_id === item.id);
-            const known = cell?.known && cell.value != null;
-            const best = known && cell.best;
-            return <td key={item.id} className={best ? "comparison-best" : undefined}>
-              {known ? formatListingValue(row.key, cell.value) : UNKNOWN}
-              {best && <span className="comparison-best-label">Best</span>}
-            </td>;
-          })}</tr>)}</tbody>
-      </table>
-    </div>
-    {notes.map((note, index) => <p className="muted" key={index}>{note}</p>)}
-    </details>
-  </div>;
+  return <><Feedback state={state} /><SavedComparisonTable comparison={comparison} /></>;
 }
 
 function Reactions({ message, onReact }) {

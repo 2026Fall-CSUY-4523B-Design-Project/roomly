@@ -40,9 +40,20 @@ export function ComparisonProvider({ children }) {
   return <ComparisonContext.Provider value={{ selected, ready, toggle,
     remove: (id) => setSelected((previous) => previous.filter((item) => item.id !== id)),
     clear: () => setSelected([]),
+    // Load a saved comparison back into the selection, replacing whatever was there.
+    replace: (items) => setSelected(items.slice(0, MAX_COMPARISON_LISTINGS)),
     // Undo for clear: only restores into an empty selection, so it never exceeds the limit.
     restore: (items) => setSelected((previous) => previous.length ? previous : items.slice(0, MAX_COMPARISON_LISTINGS)),
   }}>{children}</ComparisonContext.Provider>;
 }
 
 export const useComparison = () => useContext(ComparisonContext);
+
+// R-4: best/known flags come from the API; supplementary summary fields have no ranking.
+const SUMMARY_ROWS = [["bathrooms", "Bathrooms"], ["amenities", "Amenities"], ["availability", "Availability"]];
+
+export function comparisonRows(table) {
+  return [...table.rows, ...SUMMARY_ROWS.map(([key, label]) => ({ key, label, cells: table.listings.map((listing) => ({
+    listing_id: listing.id, known: listing[key] != null, value: listing[key], best: false,
+  })) }))];
+}
