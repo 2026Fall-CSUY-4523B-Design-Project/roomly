@@ -36,23 +36,13 @@ There is no `_document.js`; Next's default document is used.
 
 ## Dashboard (`/`)
 
-Three pieces of state: submitted `filters`, `sort`, and the result `page`. `FilterPanel` keeps its
-own draft state and only calls `onApply` on submit — typing does not trigger a search per keystroke.
-Any change to `filters` or `sort` refetches through a `useEffect` keyed on both.
+The dashboard fetches 20 listings per page. Apply submits the filter draft and returns to page one.
+Changing sort also resets the page. Previous and Next keep the applied criteria and sort.
+Only the latest request updates the grid. A failed request offers a retry.
 
-The effect guards against out-of-order responses with a `cancelled` flag; preserve that pattern for
-any new fetch effect.
-
-Status is a single `"loading" | "ready" | "error"` string, rendered as:
-
-- `loading` → "Loading listings…"
-- `error` → "Could not load listings. Is the backend running on :8000?" (the API failure is not
-  surfaced per-error; don't add a toast layer for it)
-- `ready` with no items → "No listings match these filters."
-- `ready` → `.grid` of `ListingCard`
-
-The results bar shows `page.total` from the API, not `items.length`; pagination fields exist in the
-response (`limit`/`offset` are always sent) but there is no pager UI yet.
+Signed-in renters can save the applied criteria with a name and a match-alert preference.
+Opening a saved search restores its filters, resets pagination and reruns the stored criteria.
+Deleting a saved search leaves the current filters available for browsing.
 
 ## Header
 

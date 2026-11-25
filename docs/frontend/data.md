@@ -16,18 +16,11 @@ prod alike, and no CORS is configured anywhere. Consequences:
 HTTP helpers and endpoint wrappers live here.
 
 `searchListings(filters, { sort = "newest", limit = 20, offset = 0 })` → `GET /api/search`.
-Filters are the object from `FilterPanel.toSearchParams`:
-
-| Key | Wire format |
-| --- | --- |
-| `borough` | repeated query param, one per selected borough |
-| `min_rent_cents` / `max_rent_cents` | integer cents; the panel converts the dollars typed |
-| `min_bedrooms` | one of `""` (any), `0`…`4` |
-| `no_broker_fee` | `true` or omitted |
-
-`null`, `undefined` and `""` values are dropped, so callers can pass the whole filter object.
-`sort` is `newest | rent_asc | rent_desc`; `limit`/`offset` are always sent even though nothing pages
-yet.
+The dashboard uses the saved-search criteria shape for applied filters. For public search,
+`boroughs` and `amenities` become repeated `borough` and `amenity` query parameters.
+Rent bounds are integer cents, bedroom and area limits are integers, and move-in bounds use
+ISO dates. Empty bounds are omitted. Both public and saved-search result requests include
+sort, limit and offset.
 
 `accountRequest(path, { method = "GET", body, token })` → JSON, or `null` on `204`. Sets
 `Content-Type` only when there is a body and `Authorization: Bearer` only when there is a token.

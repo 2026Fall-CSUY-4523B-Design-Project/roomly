@@ -1,7 +1,10 @@
 import Head from "next/head";
 import { useEffect, useState } from "react";
 
-import FilterPanel, { EMPTY_FILTERS, toSearchParams } from "@/components/FilterPanel";
+import FilterPanel from "@/components/FilterPanel";
+import Link from "next/link";
+import SavedSearches from "@/components/SavedSearches";
+import { useAuth } from "@/lib/auth";
 import Header from "@/components/Header";
 import ListingCard from "@/components/ListingCard";
 import { searchListings } from "@/lib/api";
@@ -14,7 +17,23 @@ const SORTS = [
 
 // Dashboard: search filters on the left, matching listings on the right (UC-3, R-3.1). Guests allowed.
 export default function Dashboard() {
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const { user } = useAuth();
+  return <Search key={user?.id || "guest"} user={user} />;
+}
+
+const PAGE_SIZE = 20;
+function Search({ user }) {
+  const { authenticatedRequest, loading } = useAuth();
+  const [filters, setFilters] = useState({});
+  const [saved, setSaved] = useState(null);
+  const [offset, setOffset] = useState(0);
+  const [revision, setRevision] = useState(0);
+  function apply(criteria, item = null) {
+    setFilters(criteria);
+    setSaved(item);
+    setOffset(0);
+    setRevision(value => value + 1);
+  }
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(null);
   const [status, setStatus] = useState("loading"); // loading | ready | error
@@ -22,9 +41,17 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
-    searchListings(toSearchParams(filters), { sort })
+    const { boroughs, amenities, ...other } = filters;
+    const resultPage = saved
+      ? authenticatedRequest(`/saved-searches/${saved.id}/results?sort=${sort}&limit=${PAGE_SIZE}&offset=${offset}`)
+      : searchListings({ ...other, borough: boroughs, amenity: amenities }, { sort, limit: PAGE_SIZE, offset });
+    resultPage
       .then((result) => {
         if (cancelled) return;
+        if (offset && offset >= result.total) {
+          setOffset(Math.max(0, Math.floor((result.total - 1) / PAGE_SIZE) * PAGE_SIZE));
+          return;
+        }
         setPage(result);
         setStatus("ready");
       })
@@ -32,7 +59,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [filters, sort]);
+  }, [filters, sort, offset, saved, authenticatedRequest, revision]);
 
   return (
     <>
@@ -44,17 +71,21 @@ export default function Dashboard() {
       <main className="dashboard">
         <aside>
           <h2>Filters</h2>
-          <FilterPanel initial={filters} onApply={setFilters} />
+          <FilterPanel key={revision} initial={filters} onApply={apply} onReset={() => apply({})} />
+          {user ? <SavedSearches criteria={filters} onOpen={item => apply(item.criteria, item)}
+            onDelete={id => { if (saved?.id === id) setSaved(null); }} /> :
+            !loading && <p><Link href="/sign-in"><a>Sign in to save searches</a></Link></p>}
         </aside>
 
         <section aria-labelledby="results-heading">
+          {saved && <p>Saved search · <strong>{saved.name}</strong></p>}
           <div className="results-bar">
             <h2 id="results-heading">
               {status === "ready" ? `${page.total} listing${page.total === 1 ? "" : "s"}` : "Listings"}
             </h2>
             <label>
               Sort{" "}
-              <select value={sort} onChange={(e) => setSort(e.target.value)}>
+              <select value={sort} onChange={(e) => { setSort(e.target.value); setOffset(0); }}>
                 {SORTS.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}
@@ -64,8 +95,8 @@ export default function Dashboard() {
             </label>
           </div>
 
-          {status === "loading" && <p className="muted">Loading listings…</p>}
-          {status === "error" && <p className="error">Could not load listings. Is the backend running on :8000?</p>}
+          {status === "loading" && <p role="status" className="muted">Loading listings…</p>}
+          {status === "error" && <p role="alert" className="error">Could not load listings. <button className="link-button" onClick={() => setRevision(value => value + 1)}>Try again</button></p>}
           {status === "ready" && page.items.length === 0 && <p className="muted">No listings match these filters.</p>}
           {status === "ready" && (
             <div className="grid">
@@ -74,6 +105,11 @@ export default function Dashboard() {
               ))}
             </div>
           )}
+          {status === "ready" && page.offset === offset && page.total > PAGE_SIZE && <nav className="search-pager" aria-label="Search pages">
+            <button className="button secondary" disabled={!offset} onClick={() => setOffset(offset - PAGE_SIZE)}>Previous</button>
+            <span>Page {Math.floor(offset / PAGE_SIZE) + 1} of {Math.ceil(page.total / PAGE_SIZE)}</span>
+            <button className="button secondary" disabled={offset + PAGE_SIZE >= page.total} onClick={() => setOffset(offset + PAGE_SIZE)}>Next</button>
+          </nav>}
         </section>
       </main>
     </>
