@@ -259,6 +259,20 @@ select {
   margin: 10px 0 0;
 }
 
+/* listing card: the whole card links to details; Compare stays clickable above the link */
+.listing-card { position: relative; display: flex; flex-direction: column; transition: border-color .15s, box-shadow .15s; }
+.listing-card-link, .card-title .listing-card-link:hover { text-decoration: none; }
+.listing-card-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.listing-card-link:focus-visible { outline: none; }
+.listing-card:has(.listing-card-link:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.listing-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(47, 91, 234, .08); }
+.listing-card:hover .listing-card-link { color: var(--accent); }
+.listing-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 14px; }
+.listing-card-footer .compare-control { position: relative; z-index: 1; margin-top: 0; }
+.listing-card-footer .compare-button { padding: 5px 12px; font-size: .85rem; }
+.listing-card-cta { color: var(--accent); font-size: .9rem; font-weight: 600; transition: transform .15s; }
+.listing-card:hover .listing-card-cta { transform: translateX(3px); }
+
 .amenities li {
   font-size: 0.8rem;
   padding: 2px 8px;
@@ -299,6 +313,9 @@ body { padding-bottom: var(--comparison-bar-height, 0px); }
 
 .compare-control { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; }
 .compare-button:disabled { cursor: not-allowed; }
+.compare-button { transition: background-color .15s, border-color .15s; }
+.compare-button.secondary:hover:not(:disabled) { background: var(--accent-soft); }
+.compare-button.active:hover:not(:disabled) { background: #2449c4; border-color: #2449c4; }
 .compare-button.active { font-weight: 600; }
 .compare-now { color: var(--accent); font-weight: 600; }
 
