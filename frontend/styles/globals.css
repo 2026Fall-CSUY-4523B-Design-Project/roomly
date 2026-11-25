@@ -270,7 +270,8 @@ select {
 .listing-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 14px; }
 .listing-card-footer .compare-control { position: relative; z-index: 1; margin-top: 0; }
 .listing-card-footer .compare-button { padding: 5px 12px; font-size: .85rem; }
-.listing-card-cta { color: var(--accent); font-size: .9rem; font-weight: 600; transition: transform .15s; }
+/* pointer-events: the hover transform lifts the CTA above the link overlay; let clicks fall through to the link */
+.listing-card-cta { color: var(--accent); font-size: .9rem; font-weight: 600; transition: transform .15s; pointer-events: none; }
 .listing-card:hover .listing-card-cta { transform: translateX(3px); }
 
 .amenities li {
