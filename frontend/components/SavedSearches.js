@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Feedback, useGroupData } from "@/components/GroupWorkspace";
 
 const load = request => request("/saved-searches");
-export default function SavedSearches({ criteria, onOpen, onDelete }) {
+export default function SavedSearches({ criteria, activeId, onOpen, onDelete }) {
   const state = useGroupData(load);
   const [notice, setNotice] = useState("");
   function save(event) {
@@ -35,9 +35,10 @@ export default function SavedSearches({ criteria, onOpen, onDelete }) {
         <button className="button">Save applied filters</button>
       </form>
       {state.data.length ? <ul>{state.data.map(item => <li key={item.id}>
-        <button className="link-button" onClick={() => onOpen(item)}>{item.name}</button>
+        <button type="button" className="link-button" aria-current={item.id === activeId || undefined}
+          onClick={() => onOpen(item)}>{item.name}</button>
         <small>Match alerts {item.alerts_enabled ? "on" : "off"}</small>
-        <button className="link-button" aria-label={"Delete " + item.name} onClick={() => remove(item)}>Delete</button>
+        <button type="button" className="link-button danger" aria-label={"Delete " + item.name} onClick={() => remove(item)}>Delete</button>
       </li>)}</ul> : <p>No saved searches yet.</p>}
     </fieldset>}
     {notice && <p role="status">{notice}</p>}

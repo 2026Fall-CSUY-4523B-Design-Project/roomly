@@ -51,19 +51,24 @@ export default function FilterPanel({ initial, onApply, onReset }) {
       <input type="number" aria-label="Maximum bedrooms" min={draft.min_bedrooms || 0} max="20" placeholder="Max"
         value={draft.max_bedrooms ?? ""} onChange={e => set("max_bedrooms", e.target.value)} />
     </div></fieldset>
-    <label>Minimum area (sq ft)<input type="number" min="1" value={draft.min_area_sqft ?? ""} onChange={e => set("min_area_sqft", e.target.value)} /></label>
-    <fieldset><legend>Move-in date</legend>
+    <fieldset><legend>Minimum area</legend>
+      <input type="number" min="1" aria-label="Minimum area in square feet" placeholder="sq ft"
+        value={draft.min_area_sqft ?? ""} onChange={e => set("min_area_sqft", e.target.value)} /></fieldset>
+    <fieldset className="date-range"><legend>Move-in date</legend>
       <label>From <input type="date" max={draft.move_in_to || undefined} value={draft.move_in_from || ""} onChange={e => set("move_in_from", e.target.value)} /></label>
       <label>Through <input type="date" min={draft.move_in_from || undefined} value={draft.move_in_to || ""} onChange={e => set("move_in_to", e.target.value)} /></label>
     </fieldset>
     <fieldset><legend>Amenities</legend>{options.map(value =>
       <label key={value} className="check"><input type="checkbox" checked={draft.amenities.includes(value)}
         disabled={draft.amenities.length >= 20 && !draft.amenities.includes(value)} onChange={() => toggle("amenities", value)} />{formatAmenity(value)}</label>)}
-      <label>Other amenity<input value={extra} onChange={e => setExtra(e.target.value)} /></label>
-      <button className="button secondary" type="button" disabled={!extra.trim() || draft.amenities.length >= 20} onClick={addAmenity}>Add amenity</button>
+      <div className="row add-amenity">
+        <input aria-label="Other amenity" placeholder="Other amenity" value={extra} onChange={e => setExtra(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addAmenity(); } }} />
+        <button className="button secondary" type="button" disabled={!extra.trim() || draft.amenities.length >= 20} onClick={addAmenity}>Add</button>
+      </div>
     </fieldset>
     <label className="check"><input type="checkbox" checked={!!draft.no_broker_fee} onChange={e => set("no_broker_fee", e.target.checked)} />No broker fee</label>
     {draft.south != null && <p className="muted">Saved map bounds apply.</p>}
-    <div className="row"><button className="button">Apply</button><button className="button secondary" type="button" onClick={onReset}>Reset</button></div>
+    <div className="row filter-actions"><button className="button">Apply filters</button><button className="button secondary" type="button" onClick={onReset}>Reset</button></div>
   </form>;
 }
