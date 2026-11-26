@@ -559,3 +559,26 @@ body { padding-bottom: var(--comparison-bar-height, 0px); }
   .save-comparison { flex: 1; }
   .save-comparison input { flex: 1; width: auto; min-width: 0; }
 }
+
+.saved-searches { margin-top: 24px; padding: 16px; }
+.saved-searches fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+.saved-searches form, .saved-searches li { display: grid; gap: 8px; justify-items: start; }
+.saved-searches ul { padding: 0; list-style: none; }
+.saved-searches li { border-top: 1px solid var(--border); padding: 12px 0; overflow-wrap: anywhere; }
+.saved-searches input, .filters input { max-width: 100%; min-width: 0; }
+.saved-searches small { color: var(--muted); }
+.search-pager { margin: 20px 0; display: flex; align-items: center; justify-content: center; gap: 12px; }
+.saved-searches .link-button[aria-current] { font-weight: 600; }
+.saved-searches .link-button[aria-current]::before { content: "● "; }
+.results { scroll-margin-top: 16px; }
+
+/* filter panel polish */
+.filters input:not([type="checkbox"]) { width: 100%; }
+.filters .date-range label { display: grid; grid-template-columns: 64px 1fr; align-items: center; color: var(--muted); font-size: .9rem; }
+.filters .add-amenity { margin-top: 4px; }
+.filters .add-amenity .button { padding: 6px 12px; flex-shrink: 0; }
+.filters .button:disabled { opacity: .45; cursor: not-allowed; }
+.filters .filter-actions { position: sticky; bottom: 0; padding: 12px 0; background: var(--bg); border-top: 1px solid var(--border); }
+.filters .filter-actions .button:first-child { flex: 1; }
+.save-prompt { margin-top: 24px; padding: 12px 14px; border: 1px dashed var(--border); border-radius: 8px; color: var(--muted); font-size: .9rem; }
+.save-prompt a { color: var(--accent); font-weight: 600; }

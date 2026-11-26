@@ -220,6 +220,8 @@ immediately; do not continue past a P1 in the same area.
 | UAT-SEA-08 | Signed in | As the account registered and confirmed in UAT-AUTH-02 (no destinations yet), add three commute destinations; add a fourth; delete one; delete it again. | Three 201s; the fourth answers 409; 204 on delete; 404 on the second delete. |
 | UAT-SEA-09 | Signed in | Save a search with a bad rent range, then with 500-character name. | 422 at the offending field; nothing is stored. |
 
+On the dashboard, apply bedroom, floor-area, move-in and amenity filters. With more than 20 matches, advance a page and change the sort to return to page one. Save the applied search with alerts disabled, reset, reopen it and confirm the restored controls and matching listings. Delete it and check the saved list after reload.
+
 ### F. Comparison
 
 | ID | Role | Steps | Expected |
@@ -267,7 +269,7 @@ immediately; do not continue past a P1 in the same area.
 | UAT-UI-05 | Signed in | Open `/notifications`, mark one read, mark all read, open the settings. | Unread totals and read states update. Saved alert and delivery preferences survive reload. |
 | UAT-UI-06 | Any | While signed out, open a group or notification page directly. | The app asks the user to sign in instead of showing data or a server error. Both routes offer sign-in. |
 | UAT-UI-07 | Keyboard / screen reader | Tab through `/` and `/sign-in`: filters, apply, sort, cards, submit. | Focus is visible, every field has a label, the header and auth messages use `role="status"` / `role="alert"`, and the form can be completed without a mouse. |
-| UAT-UI-08 | Any | Stop the backend and reload `/`. | The dashboard shows "Could not load listings. Is the backend running on :8000?" and does not blank the page; restarting and reloading recovers. |
+| UAT-UI-08 | Any | Stop the backend and reload `/`. | The dashboard shows "Could not load listings." and does not blank the page; restarting and reloading recovers. |
 
 Listing detail checks (UAT-UI-09): on desktop and mobile, open a seeded listing and an unknown ID;
 verify sources, timestamps, conflicts, empty history, and the missing-listing message. Stop the API,
